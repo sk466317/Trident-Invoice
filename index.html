@@ -2,660 +2,1065 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rail, THC & Transport Generator (V32 - Dark Mode & Clean Print)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Invoice & Data Management</title>
     <style>
-        /* Dark Base for Screen */
-        body { background-color: #111827; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #e5e7eb; }
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            padding: 10px;
+            background-color: white;
+        }
         
-        /* Print Specific Styles - Professional A4 Layout */
-        @media print {
-            @page { size: A4 landscape; margin: 5mm; }
-            
-            /* FORCE WHITE BACKGROUNDS FOR PRINT */
-            body { background-color: white !important; color: black !important; -webkit-print-color-adjust: exact; }
-            .page-container { 
-                background-color: white !important; 
-                box-shadow: none !important; 
-                border: none !important; 
-                width: 100% !important; 
-                margin: 0 !important; 
-                max-width: 100% !important;
-            }
-            
-            /* HIDE ELEMENTS IN PRINT */
-            .no-print { display: none !important; }
-            
-            /* Styling fixes for print */
-            input, select, textarea { 
-                border: none !important; 
-                background: transparent !important; 
-                padding: 0 !important; 
-                resize: none; 
-                color: black !important;
-            }
-            select::-ms-expand { display: none; }
-            .text-red-600 { color: #dc2626 !important; }
-            #remarks { border: 1px solid #000 !important; height: auto; min-height: 60px; }
-            
-            /* Keep highlights but ensure readability */
-            tr.bg-pink-100 { background-color: #ffe4e6 !important; -webkit-print-color-adjust: exact; }
-            .tariff-table-block { page-break-inside: avoid; margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 20px; }
-            .thc-header { background-color: #b91c1c !important; color: white !important; }
-            .tariff-table td, .tariff-table th { padding: 2px 4px !important; font-size: 0.65rem !important; border-color: #ccc !important; }
-            
-            /* Header/Footer Alignment */
-            .text-right { text-align: right !important; }
+        /* Form Container - Denser Background */
+        .form-container {
+            max-width: 100%;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #dcdcdc; /* Darker Gray Base */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            background-color: #333333; /* Dark Gray */
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .form-container label {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: bold;
+            color: #333333;
+            font-size: 0.9rem;
+        }
+        
+        /* Input Boxes */
+        .form-container input[type="text"],
+        .form-container input[type="date"],
+        .form-container input[type="number"],
+        .form-container select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #999;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            background-color: #fafafa;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        
+        /* New Wrapper for 2x2 Grid on Mobile */
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        /* New Input Item Container */
+        .input-item {
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        /* Screen Inputs */
-        .input-field { border: 1px solid #6b7280; border-radius: 4px; padding: 4px 8px; width: 100%; font-size: 0.85rem; background-color: #f3f4f6; color: #111827; }
-        .input-field:focus { outline: none; border-color: #4f46e5; ring: 2px; background-color: #fff; }
-        .input-field:read-only { background-color: #e5e7eb; color: #374151; }
+        /* Highlight missing fields by filling the box with Light Pink/Red */
+        .form-container .highlight-error {
+            border: 2px solid red !important;
+            background-color: #ffe5e5 !important;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) !important;
+        }
+
+        /* --- Full Width Action Button Container --- */
+        .full-width-action {
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* --- Custom Button Grid and Styles (2x2) --- */
+        .button-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .form-container button {
+            /* General button styling */
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 0;
+            transition: background-color 0.3s;
+            width: 100%; /* Default width for safety */
+        }
+
+        .button-grid button {
+            width: calc(50% - 5px); /* Half width minus gap */
+        }
+
+        .form-container button:hover, .button-grid button:hover {
+            opacity: 0.9;
+        }
+
+        /* Specific Button Styles */
+        #generateInvoiceBtn {
+            width: 100%;
+            background-color: #007bff; /* Blue for primary action */
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        #downloadCsvBtn {
+            background-color: #f44336; /* Red for download/danger */
+        }
+        #deleteAllDataBtn {
+            background-color: #dc3545; /* Dark Red for delete */
+        }
+        #bulkShareBtn {
+            background-color: #00A86B; /* Darker Green for Bulk Share */
+        }
         
-        /* Table Styling */
-        .tariff-table th { background-color: #1e3a8a; color: white; font-size: 0.7rem; padding: 6px 2px; text-align: center; border: 1px solid #fff; }
-        .tariff-table td { border: 1px solid #9ca3af; font-size: 0.75rem; padding: 4px; text-align: center; background-color: white; color: black; }
-        .tariff-table input { width: 100%; text-align: center; background: transparent; border: 1px solid #9ca3af; font-size: 0.75rem; transition: 0.2s; color: black; }
-        .read-only-cell { background-color: #e5e7eb; color: #1f2937; font-weight: 600; }
+        /* --- MEDIA QUERY for Mobile View (Input Fields) --- */
+        @media (max-width: 768px) {
+            .input-item {
+                width: calc(50% - 5px);
+            }
+            /* Hide non-essential columns on smaller screens for better fit */
+            /* Adjusted Logic for New Column Order */
+            /* 1:Location, 2:BookingNo, 3:StuffingDate, 4:Containers, 5:ShippingLine, 6:Dest */
+            
+            #dataTable th:nth-child(3), /* Stuffing Date */
+            #dataTable td:nth-child(3), 
+            #dataTable th:nth-child(6), /* Country of Final Destination */
+            #dataTable td:nth-child(6) { 
+                display: none;
+            }
+        }
         
-        /* Specific Styles for New Tables */
-        .thc-table th { background-color: #7f1d1d; } /* Red */
-        .trans-table th { background-color: #d97706; } /* Orange/Amber */
+        /* Data Table Styles */
+        #dataTableContainer {
+            max-height: 400px;
+            overflow-x: auto;
+            overflow-y: auto;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #e0e0e0;
+        }
+        #dataTable {
+            width: 100%;
+            min-width: 800px; /* Increased min-width to accommodate Edit column */
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        #dataTable th, #dataTable td {
+            border: 1px solid #ddd;
+            padding: 16px 8px; /* Double height */
+            text-align: left;
+        }
+        #dataTable th {
+            background-color: #4CAF50;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        #dataTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* NEW: Action column style */
+        .action-cell {
+            padding: 5px;
+            width: 1%;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .edit-btn {
+            background-color: #ff9800; /* Orange for Edit */
+            padding: 6px 10px;
+            font-size: 0.8em;
+            width: 100%;
+            margin-bottom: 5px;
+            display: block;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        .edit-btn:hover {
+            background-color: #e68900;
+        }
+        /* New Delete Button Style */
+        .delete-btn {
+            background-color: #d32f2f; /* Red for Delete */
+            padding: 6px 10px;
+            font-size: 0.8em;
+            width: 100%;
+            display: block;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #b71c1c;
+        }
         
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        #accessOverlay { background: #111827; }
-        #loadingOverlay { background: rgba(0,0,0,0.9); display: none; z-index: 1000; color: white; }
-        #manualSyncModal { background: rgba(0,0,0,0.9); display: none; z-index: 3000; }
+        /* Invisible container for Image generation */
+        #imageCaptureArea {
+            position: absolute;
+            left: -9999px;
+            background-color: white;
+            padding: 10px;
+            max-width: 1000px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+        /* Styling for bulk image capture (Cloned Table) */
+        #bulkCaptureContent {
+            padding: 5px;
+            border: 1px solid #000;
+        }
+        #bulkCaptureContent h3 {
+            background-color: #007bff;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            margin: 0 0 5px 0;
+            border-radius: 3px;
+            font-size: 1.1rem;
+        }
+        /* Ensure the captured table looks good */
+        #imageCaptureArea #dataTableClone {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #imageCaptureArea #dataTableClone th,
+        #imageCaptureArea #dataTableClone td {
+            border: 1px solid #ccc;
+            /* Extra height for image quality */
+            padding: 12px 5px;
+            text-align: left;
+            font-size: 0.8em;
+        }
+        #imageCaptureArea #dataTableClone th {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        
+        /* Invoice Styles (Same as before) */
+        .invoice {
+            max-width: 100%;
+            margin: 15px auto;
+            padding: 15px;
+            border: 3px solid black;
+            display: none;
+            box-sizing: border-box;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .invoice .header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            text-decoration: underline;
+            border: 2px solid #333333;
+            padding: 10px;
+            background-color: #f2f2f2;
+            color: #333333;
+        }
+        .invoice th, .invoice td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .invoice th {
+            background-color: #333333;
+            color: white;
+            font-weight: bold;
+        }
+        .invoice .section-title {
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            text-decoration: underline;
+            color: #333333;
+        }
+        .info-box {
+            border: 2px solid #333333;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .location-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: black;
+            padding: 5px 0;
+            text-align: left;
+            margin: 0;
+        }
+        .exporter-details p { margin: 5px 0; font-size: 0.9rem; }
+        .pdf-render-fix { width: 794px !important; max-width: 794px !important; margin: 0 auto; padding: 10px; box-shadow: none; }
+        
+        /* Modified Print Button Area */
+        .print-button button {
+            background-color: #555;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .print-button button:hover {
+            background-color: #333;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
-<body class="p-2 md:p-4 overflow-hidden" id="mainBody">
+<body>
 
-    <!-- Access Overlay -->
-    <div id="accessOverlay" class="overlay">
-        <div class="bg-gray-500 p-8 rounded-xl shadow-2xl text-center w-80 md:w-96 border border-gray-700">
-            <div class="mb-4 text-blue-400"><i class="fas fa-lock text-5xl"></i></div>
-            <h2 class="text-2xl font-bold text-white mb-2">Secured System</h2>
-            <input type="password" id="accessPass" class="w-full border-2 border-gray-600 rounded-lg p-3 text-center text-lg mb-4 bg-gray-700 text-white focus:border-blue-500 outline-none" placeholder="********">
-            <button onclick="checkAccess()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">UNLOCK</button>
-        </div>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="overlay">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-        <h2 class="text-xl font-bold text-white" id="loadingText">Processing...</h2>
-    </div>
-
-    <!-- Manual Sync Modal -->
-    <div id="manualSyncModal" class="overlay">
-        <div class="bg-gray-500 p-6 rounded-xl shadow-2xl w-11/12 md:w-1/2 max-w-2xl border border-gray-600">
-            <h3 class="text-xl font-bold text-red-400 mb-2">Auto-Sync Failed</h3>
-            <p class="text-sm text-gray-300 mb-4">Please use manual backup:</p>
-            <div class="bg-gray-700 p-3 rounded mb-4 text-sm border border-gray-600">
-                <p class="font-bold mb-1 text-white">1. Get Data:</p>
-                <a id="manualDataLink" href="#" target="_blank" class="text-blue-400 underline">Click to open database</a>
-            </div>
-            <textarea id="manualDataInput" class="w-full border border-gray-600 rounded p-2 h-24 text-xs bg-gray-900 text-white" placeholder='Paste data here...'></textarea>
-            <div class="text-right mt-2">
-                <button onclick="processManualData()" class="bg-green-600 text-white px-6 py-2 rounded font-bold text-sm hover:bg-green-500">Load Data Now</button>
-                <button onclick="document.getElementById('manualSyncModal').style.display='none'" class="text-gray-400 text-xs ml-2 hover:text-white">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Top Controls (Dark Theme) -->
-    <div class="max-w-[1350px] mx-auto mb-4 no-print opacity-0 transition-opacity duration-500" id="topControls">
-        <div class="bg-gray-500 border-l-4 border-blue-500 p-4 mb-4 rounded shadow-lg">
-            <div class="flex flex-col gap-4">
-                <div class="flex justify-between items-center bg-gray-700 p-3 rounded border border-gray-600">
-                    <span id="syncStatusText" class="text-sm font-semibold text-blue-300"><i class="fas fa-cloud-download-alt mr-1"></i> Ready</span>
-                    <button onclick="syncWithCloud()" class="bg-blue-600 text-white px-4 py-1.5 rounded font-bold hover:bg-blue-500 shadow text-sm">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
+    <div class="form-container">
+        <h2>Generate Invoice</h2>
+        <form id="invoiceForm">
+            <div class="input-group">
+                
+                <div class="input-item">
+                    <label for="invoiceNo">Invoice No:</label>
+                    <input type="text" id="invoiceNo" name="invoiceNo" required>
                 </div>
-                <div class="flex flex-col md:flex-row gap-2 w-full">
-                    <div class="flex-1">
-                        <select id="historyDropdown" onchange="loadFromDropdown(this.value)" class="w-full border border-gray-600 rounded px-3 py-2 font-bold text-gray-200 bg-gray-700 focus:outline-none focus:border-blue-500 h-12">
-                            <option value="">-- Select from History --</option>
-                        </select>
-                    </div>
-                    <div class="flex-1 flex">
-                        <input type="text" id="searchBox" list="savedCustomersList" class="w-full border border-gray-600 rounded-l px-3 py-3 font-bold text-gray-200 bg-gray-700 h-12 placeholder-gray-400" placeholder="Type Name...">
-                        <button onclick="performSearch()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-r font-bold h-12">Find</button>
-                        <datalist id="savedCustomersList"></datalist>
-                    </div>
+                
+                <div class="input-item">
+                    <label for="invoiceDate">Invoice Date:</label>
+                    <input type="date" id="invoiceDate" name="invoiceDate" required>
                 </div>
-                <div class="flex flex-wrap justify-end items-center gap-2 pt-2 border-t border-gray-700">
-                    <button onclick="addNewRailTable()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow-sm text-sm font-bold flex items-center"><i class="fas fa-train mr-2"></i> Add Rail</button>
-                    <button onclick="addNewThcTable()" class="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded shadow-sm text-sm font-bold flex items-center"><i class="fas fa-truck-loading mr-2"></i> Add THC</button>
-                    <button onclick="addNewTransportTable()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-2 rounded shadow-sm text-sm font-bold flex items-center"><i class="fas fa-truck mr-2"></i> Add Trans</button>
-                    
-                    <button onclick="openOutlook()" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded shadow text-sm font-bold"><i class="fas fa-envelope"></i></button>
-                    <button onclick="window.print()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded shadow text-sm font-bold"><i class="fas fa-file-pdf"></i></button>
-                    <button onclick="initiateSave()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded shadow text-sm font-bold flex items-center"><i class="fas fa-save mr-2"></i> SAVE</button>
-                    <button onclick="resetForm()" class="bg-gray-500 hover:bg-gray-400 text-white px-4 py-2 rounded shadow text-sm font-bold"><i class="fas fa-plus"></i></button>
+
+                <div class="input-item">
+                    <label for="otherReference">Containers x20/x40:</label>
+                    <input type="text" id="otherReference" name="otherReference" required>
                 </div>
+
+                <div class="input-item">
+                    <label for="buyer">Shipping Line:</label>
+                    <input type="text" id="buyer" name="buyer" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="bookingNo">Booking No.:</label>
+                    <input type="text" id="bookingNo" name="bookingNo" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="initialCarriage">Carriage :</label>
+                    <input type="text" id="initialCarriage" name="initialCarriage" value="Prepaid" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="portOfDischarge">Port of Loading:</label>
+                    <input type="text" id="portOfDischarge" name="portOfDischarge" value="MUNDRA" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="countryOfOrigin">Country of Origin:</label>
+                    <input type="text" id="countryOfOrigin" name="countryOfOrigin" value="INDIA" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="packages">Packages:</label>
+                    <input type="number" id="packages" name="packages" min="500" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="cartonNos">Carton Nos.:</label>
+                    <input type="text" id="cartonNos" name="cartonNos" value="EXP983" required>
+                </div>
+
+                <div class="input-item">
+                    <label for="grossWeight">Gross Weight (KGS):</label>
+                    <input type="number" id="grossWeight" name="grossWeight" step="0.01" required>
+                </div>
+                
+                <div class="input-item">
+                    <label for="stuffingDate">Stuffing Date:</label>
+                    <!-- Removed 'required' attribute here so it can be optional -->
+                    <input type="date" id="stuffingDate" name="stuffingDate">
+                </div>
+
             </div>
-        </div>
-    </div>
+            
+            <label for="finalDestination">Country of Final Destination:</label>
+            <input list="destinationPorts" id="finalDestination" name="finalDestination" type="text" required placeholder="Select or type port name">
+            
+            <datalist id="destinationPorts">
+            </datalist>
 
-    <!-- MAIN FORM (GRAY PAPER ON SCREEN, WHITE ON PRINT) -->
-    <div id="printArea" class="page-container max-w-[1350px] mx-auto bg-gray-300 shadow-2xl p-6 rounded-lg border border-gray-500 opacity-0 transition-opacity duration-500 text-black">
-        <div class="border-b-4 border-blue-800 pb-2 mb-4 flex justify-between items-start">
-            <div>
-                <h2 class="text-3xl font-bold text-blue-900 uppercase tracking-wide">Rail Tariff (Export)</h2>
-                <p class="text-gray-700 text-sm font-bold">Internal Calculation Sheet</p>
-            </div>
-            <div class="text-right">
-                <div class="flex items-center justify-end mb-1"><span class="text-xs font-bold text-gray-500 mr-2">Tariff Sheet No:</span><input type="text" id="tariffNo" readonly class="text-right font-mono font-bold text-blue-900 border-none w-32 bg-transparent"></div>
-                <div class="flex items-center justify-end"><span class="text-xs font-bold text-gray-500 mr-2">Dated:</span><input type="date" id="dateToday" readonly class="text-right text-xs bg-transparent border-none w-32"></div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-4 gap-3 mb-4 bg-gray-100 p-4 rounded border border-gray-300 shadow-inner">
-            <div class="col-span-2"><label class="block text-[10px] font-bold text-gray-700 uppercase">Customer Name <span class="text-red-600">*</span></label><input type="text" id="customerName" list="customerSuggestions" onblur="checkVersion()" class="input-field font-bold text-blue-900 h-8 bg-white"><datalist id="customerSuggestions"></datalist></div>
-            <div><label class="block text-[10px] font-bold text-gray-700 uppercase">CHA / Forwarder</label><input type="text" id="chaName" list="chaSuggestions" class="input-field h-8 bg-white"><datalist id="chaSuggestions"></datalist></div>
-            <div><label class="block text-[10px] font-bold text-gray-700 uppercase">Version</label><input type="text" id="version" readonly class="input-field bg-gray-200 text-gray-700 h-8 font-bold" value="Version 1"></div>
-            <div><label class="block text-[10px] font-bold text-gray-700 uppercase">Sales Person Name</label><input type="text" id="salesPerson" list="salesPersonList" class="input-field h-8 bg-white"><datalist id="salesPersonList"><option value="Kapil K Sharma"><option value="Gaurav Sharma"><option value="Ashis Sharma"></datalist></div>
-            <div><label class="block text-[10px] font-bold text-gray-700 uppercase">Effective From <span class="text-red-600">*</span></label><input type="date" id="dateFrom" onchange="calculateMonths()" class="input-field h-8 bg-white"></div>
-            <div><label class="block text-[10px] font-bold text-gray-700 uppercase">End Date <span class="text-red-600">*</span></label><input type="date" id="dateTo" onchange="calculateMonths()" class="input-field h-8 bg-white"></div>
-            <div><label class="block text-[10px] font-bold text-gray-700 uppercase">Valid For</label><input type="text" id="validity" readonly class="input-field bg-transparent border-none text-red-700 font-bold text-sm h-8"></div>
-        </div>
-
-        <div id="tablesContainer"></div>
-
-        <div class="grid grid-cols-5 gap-3 border-t border-gray-400 pt-3 mb-3">
-            <div><label class="block text-[10px] font-bold text-gray-500">Customer Status</label><select id="custStatus" class="input-field h-8 bg-white"><option value="">-- Select --</option><option>FREIGHT FORWARDER</option><option>RICE EXPORTER</option><option>CHA</option><option>EXPORTER</option></select></div>
-            <div><label class="block text-[10px] font-bold text-gray-500">Volume Indication</label><input type="text" id="volumeInd" class="input-field h-8 bg-white"></div>
-            <div><label class="block text-[10px] font-bold text-gray-500">Stream</label><input type="text" id="stream" class="input-field h-8 font-bold bg-gray-200" value="DHIRPUR-MUNDRA" readonly></div>
-            <div><label class="block text-[10px] font-bold text-gray-500">Payment Terms</label><select id="paymentTerms" class="input-field h-8 bg-white"><option value="">-- Select --</option><option>07 DAYS</option><option>15 DAYS</option><option>30 DAYS</option><option>Advance</option></select></div>
-            <div><label class="block text-[10px] font-bold text-gray-500">CHA Involved</label><input type="text" id="chaInvolved" class="input-field h-8 bg-white"></div>
-        </div>
-
-        <div class="border-t border-gray-400 pt-3 mb-4 bg-yellow-100 p-3 rounded border border-yellow-300">
-            <label class="block text-xs font-bold text-gray-500 mb-1"><i class="fas fa-sticky-note text-yellow-700 mr-1"></i>Remarks / Special Notes</label>
-            <textarea id="remarks" class="w-full border border-yellow-400 rounded p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500" rows="2"></textarea>
+            <label for="location">Location:</label>
+            <select id="location" name="location" required>
+                <option value="" disabled selected>Select Location</option>
+                <option value="Trident Dhaula">Trident Dhaula</option>
+                <option value="Trident Sanghera">Trident Sanghera</option>
+                <option value="Target Store">Target Store</option>
+                <option value="Trident Lotus">Trident Lotus</option>
+            </select>
+        </form>
+        
+        <div class="full-width-action">
+            <button type="submit" id="generateInvoiceBtn" form="invoiceForm">Generate, Save PDF & WhatsApp 🚀</button>
         </div>
         
-        <div class="mt-4 pt-4 border-t-2 border-gray-600 flex justify-between print-only hidden">
-            <div class="text-center"><p class="font-bold text-xs border-t border-black px-8 pt-1 inline-block">Prepared By</p></div>
-            <div class="text-center"><p class="font-bold text-xs border-t border-black px-8 pt-1 inline-block">Approved By</p></div>
+        <div class="button-grid">
+            <button id="downloadCsvBtn" onclick="downloadData()">Download Data (CSV) 💾</button>
+            <button id="bulkShareBtn" onclick="shareBulkTableDataAsImage()">Share All Data (Image) 📸</button>
+            <button id="deleteAllDataBtn" onclick="deleteAllData()">Delete All Data 🗑️</button>
+            <button id="extraButton" style="background-color: #6c757d;">Extra Button</button>
+        </div>
+        </div>
+
+    <div id="dataTableContainer">
+        <h2>All Saved Invoice Records</h2>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <!-- UPDATED: Reordered - Location First, Save Date Hidden -->
+                    <th>Location</th>
+                    <th>Booking No</th>
+                    <th>Stuffing Date</th>
+                    <th>Containers x20/x40</th>
+                    <th>Shipping Line</th>
+                    <th>Country of Final Destination</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+    
+    <div id="imageCaptureArea">
+        </div>
+
+    <div class="invoice" id="invoice">
+        <div class="header">Packing List / Invoice</div>
+        
+        <div class="section-title">Exporter Details</div>
+        <div class="exporter-details">
+            <p class="location-header" id="displayLocationHeader"></p>
+            <p>E-212, Kitchlu Nagar, Ludhiana - 141004 (P.B.), India</p>
+            <p>Phone: +91-123-4567890 | Email: info@tridentltd.com</p>
+        </div>
+        
+        <div class="info-box">
+            <div class="section-title">Invoice Details</div>
+            <table>
+                <tr>
+                    <th>Invoice No. & Date</th>
+                    <td id="displayInvoiceNo"></td>
+                </tr>
+                <tr>
+                    <th>Containers</th>
+                    <td id="displayOtherReference"></td>
+                </tr>
+                <tr>
+                    <th>Shipping Line</th>
+                    <td id="displayBuyer"></td>
+                </tr>
+                <tr>
+                    <th>Booking No.</th>
+                    <td id="displayBookingNo"></td>
+                </tr>
+            </table>
+            
+            <div class="section-title">Shipment Details</div>
+            <table>
+                <tr>
+                    <th>Initial Carriage (Mode)</th>
+                    <td id="displayInitialCarriage"></td>
+                </tr>
+                <tr>
+                    <th>Port of Loading</th>
+                    <td id="displayPortOfDischarge"></td>
+                </tr>
+                <tr>
+                    <th>Country of Origin</th>
+                    <td id="displayCountryOfOrigin"></td>
+                </tr>
+                <tr>
+                    <th>Country of Final Destination</th>
+                    <td id="displayFinalDestination"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section-title">Product Details</div>
+        <table>
+            <tr>
+                <th>No. and Kind of Packages</th>
+                <th>Carton Nos.</th>
+                <th>Location</th>
+                <th>Stuffing Date</th>
+                <th>Gross Weight (KGS)</th>
+            </tr>
+            <tr>
+                <td id="displayPackages"></td>
+                <td id="displayCartonNos"></td>
+                <td id="displayLocation"></td>
+                <td id="displayStuffingDate"></td>
+                <td id="displayGrossWeight"></td>
+            </tr>
+        </table>
+        
+        <div class="footer">Signature & Date</div>
+        <div class="signature-box">
+            <p>Authorized Signature:</p>
+            <p>________________________</p>
+            <p>Date: <span id="displayDate"></span></p>
+        </div>
+
+        <div class="footer">
+            <p>This is Computer Generated Invoice, Signature Not Required</p>
+        </div>
+
+        <div class="print-button" id="printButtons">
+            <button onclick="window.print()">Print Invoice (Printer)</button>
         </div>
     </div>
 
     <script>
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxp_ylYfKKNkaQR7oLHIKLOfjo7AL2Mube45GlMDW4BmbD8xvAB1RZBx1-A-zhBMebR/exec';
+        // Key for Local Storage
+        const STORAGE_KEY = 'invoiceDataRecords';
+
+        // Global variable to store all records fetched from local storage
+        let allRecords = []; 
         
-        const defaultRailRows = [
-            { pos: "Lower", size: '20"', slab: "UP TO 10 MT", public: 30200, cost: 20916, margin: 9284 },
-            { pos: "Lower", size: '20"', slab: ">10 - 20 MT", public: 36600, cost: 26444, margin: 10156 },
-            { pos: "Lower", size: '20"', slab: ">20 - 26 MT", public: 43700, cost: 32007, margin: 11693 },
-            { pos: "Lower", size: '20"', slab: ">26 - 31 MT", public: 47200, cost: 35761, margin: 11439 },
-            { pos: "Lower", size: '40"', slab: "UP TO 20 MT", public: 51800, cost: 37698, margin: 14102 },
-            { pos: "Lower", size: '40"', slab: ">20 MT",      public: 64000, cost: 47648, margin: 16352 }
-        ];
-        const defaultThcRows = [
-            { size: '20"', slab: 'UP TO 10 MT', stuffing: 2800, fuel: 125, data: 250, infra: 250, eic: 1000 },
-            { size: '20"', slab: '>10 - 20 MT', stuffing: 2800, fuel: 125, data: 250, infra: 250, eic: 1000 },
-            { size: '20"', slab: '>20 - 26 MT', stuffing: 2800, fuel: 125, data: 250, infra: 250, eic: 1000 },
-            { size: '20"', slab: '>26 -31 MT',  stuffing: 2800, fuel: 125, data: 250, infra: 250, eic: 1000 },
-            { size: '40"', slab: 'UP TO 20 MT', stuffing: 5400, fuel: 225, data: 500, infra: 500, eic: 2000 },
-            { size: '40"', slab: '>20 MT',      stuffing: 5400, fuel: 225, data: 500, infra: 500, eic: 2000 }
-        ];
-        const locationOptions = ["Amritsar", "Jalandhar", "TARAORI", "Dhiprpur"];
+        const MASTER_PORTS_LIST = [
+            "-", // New editable option
+            "ASHDOD, NON USA",
+            "BOSTON USA PORT",
+            "BUENAVENTURA- NON USA PORT",
+            "CHARLESTON USA PORT",
+            "CHATTOGRAM",
+            "CHITTAGONG NON USA PORT",
+            "COLOMBO, NON US PORT",
+            "DAMMAM SAUDI ARABIA",
+            "FELIXSTOWE, NON USA PORT",
+            "FOS-SUR-MER - NON USA PORT",
+            "GDYNIA NON USA PORT",
+            "GOTEBORG, NON USA PORT",
+            "HAMBURG, NON USA PORT",
+            "HOUSTON USA PORT",
+            "JACKSONVILLE",
+            "JACKSONVILLE USA PORT",
+            "JIANGXI, CHAINA",
+            "LE HAVRE NON USA PORT",
+            "LONG BEACH USA PORT",
+            "LOS ANGELES, CA",
+            "MELBOURNE",
+            "MOBILE USA PORT",
+            "NEW ORLEANS USA PORT",
+            "NEW YORK USA PORT",
+            "NORFOLK USA PORT",
+            "OAKLAND USA PORT",
+            "PARANAGUA NON USA PORT",
+            "PHILADELPHIA USA PORT",
+            "PORT EVERGLADES USA PORT",
+            "PORT LOUIS, MAURITIUS",
+            "ROTTERDAM NON USA PORT",
+            "SANSHAN, NON USA PORT",
+            "SANSHUI, FOSHAN, GUANGDONG, CHINA",
+            "SAVANNAH USA PORT",
+            "SEATTLE USA PORT",
+            "SINGAPORE NON USA PORT",
+            "TOKIYO"
+        ].sort((a, b) => { 
+            if (a === '-') return -1;
+            if (b === '-') return 1;
+            return a.localeCompare(b);
+        });
 
-        let currentEntryId = null;
-        let tableCounter = 0; 
-
-        function checkAccess() {
-            if (document.getElementById('accessPass').value === "16111980") {
-                document.getElementById('accessOverlay').style.display = "none";
-                document.getElementById('mainBody').classList.remove('overflow-hidden');
-                document.getElementById('topControls').classList.remove('opacity-0');
-                document.getElementById('printArea').classList.remove('opacity-0');
-                initApp();
-                setTimeout(syncWithCloud, 500); 
-            } else { document.getElementById('accessError').innerText = "Incorrect Password!"; }
-        }
-        document.getElementById('accessPass').addEventListener("keypress", (e) => { if(e.key==="Enter") checkAccess(); });
-
-        function initApp() {
-            document.getElementById('dateToday').valueAsDate = new Date();
-            generateTariffID();
-            addNewRailTable(); 
-            document.getElementById('historyDropdown').innerHTML = '<option>Waiting for Sync...</option>';
-            document.getElementById('manualDataLink').href = GOOGLE_SCRIPT_URL;
-        }
-
-        function addNewRailTable() { createTableStructure('rail'); }
-        function addNewThcTable() { createTableStructure('thc'); }
-        function addNewTransportTable() { createTableStructure('transport'); }
-
-        function createTableStructure(type) {
-            const container = document.getElementById('tablesContainer');
-            const tableIndex = tableCounter++;
-            const wrapper = document.createElement('div');
-            wrapper.className = "tariff-table-block mb-6 bg-gray-50 border border-gray-300 p-2 rounded"; 
-            wrapper.id = `tableBlock_${tableIndex}`;
-            wrapper.dataset.index = tableIndex; 
-            wrapper.dataset.type = type; 
-
-            // Remove Button with no-print class
-            const removeBtn = `<button onclick="removeTable(${tableIndex})" class="text-red-500 text-xs float-right font-bold bg-white px-2 py-1 rounded border border-red-200 no-print">Remove</button>`;
+        // --- Helper Function for DD-MM-YYYY format ---
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            // Handle "Not Confirm" specifically
+            if (dateString === 'Not Confirm') return 'Not Confirm';
+            // Simple check if it matches YYYY-MM-DD format roughly before splitting
+            if (!dateString.includes('-')) return dateString;
             
-            if(type === 'rail') {
-                wrapper.innerHTML = `<div class="mb-2 border-b border-blue-300 pb-2"><div class="flex justify-between items-center mb-1"><span class="text-blue-900 font-bold text-xs uppercase">RAIL TARIFF #${tableIndex+1}</span>${removeBtn}</div><div class="flex items-center"><label class="text-[10px] font-bold text-gray-700 uppercase mr-2">Shipping Line:</label><input type="text" id="shipping_line_${tableIndex}" class="border border-gray-400 rounded px-2 py-1 text-xs font-bold text-blue-900 w-48 bg-white" placeholder="e.g. Maersk" oninput="updateRailPos(${tableIndex}, this.value)"></div></div><div class="overflow-x-auto"><table class="w-full tariff-table border-collapse"><thead><tr><th class="w-12">POS</th><th class="w-10">Size</th><th>Weight Slab</th><th>Public Tariff</th><th>Rail Cost<br><span class="text-[9px]">(IRH+Survey+CRT)</span></th><th>Frt Margin</th><th class="bg-green-800 w-20 text-white">Rail Disc</th><th class="bg-green-800 w-12 text-white">Disc %</th><th class="bg-green-800 w-20 text-white">CHA Inc.</th><th class="bg-green-800 w-20 text-white">Trans Sub<br>PCS</th><th class="bg-green-800 w-20 text-white">Trans Sub<br>HCPL</th><th class="bg-blue-900 w-24 text-white">Net Margin<br>(PCS)</th><th class="bg-blue-900 w-24 text-white">Net Margin<br>(HCPL)</th><th class="bg-blue-900 w-24 text-white">Applicable Rate<br>(After Disc)</th></tr></thead><tbody id="tbody_${tableIndex}"></tbody></table></div>`;
-                container.appendChild(wrapper);
-                renderRailRows(tableIndex);
-            } else if (type === 'thc') {
-                wrapper.innerHTML = `<div class="mb-2 border-b border-red-300 pb-2"><div class="flex justify-between items-center mb-1"><span class="text-red-900 font-bold text-xs uppercase">TERMINAL THC #${tableIndex+1}</span>${removeBtn}</div><div class="flex items-center"><label class="text-[10px] font-bold text-gray-700 uppercase mr-2">Stuffing Type:</label><select id="stuffing_type_${tableIndex}" onchange="updateThcHeader(${tableIndex}, this.value)" class="border border-gray-400 rounded px-2 py-1 text-xs font-bold text-red-900 w-48 bg-white"><option value="FACTORY STUFFING">Factory Stuffing</option><option value="ICD STUFFING">ICD Stuffing</option><option value="OTHER ICD STUFFING">Other ICD Stuffing</option><option value="SELF SEAL">Self Seal</option><option value="LOCK">Lock</option></select></div></div><div class="overflow-x-auto"><table class="w-full tariff-table border-collapse thc-table"><thead><tr><th class="w-10">Size</th><th>Weight Slab</th><th>Access Charges</th><th id="thc_head_${tableIndex}">Base</th><th>Fuel</th><th>Data</th><th>Infra</th><th>EIC</th><th class="bg-gray-500 text-white">Total THC</th><th class="disc-col text-white">Base Disc</th><th class="disc-col text-white">Fuel Disc</th><th class="disc-col text-white">Data Disc</th><th class="disc-col text-white">Infra Disc</th><th class="disc-col text-white">EIC Disc</th><th class="bg-green-900 text-white">Final Total</th></tr></thead><tbody id="tbody_${tableIndex}"></tbody></table></div>`;
-                container.appendChild(wrapper);
-                renderThcRows(tableIndex);
-            } else if (type === 'transport') {
-                wrapper.innerHTML = `
-                    <div class="mb-2 border-b border-yellow-600 pb-2">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-yellow-900 font-bold text-xs uppercase">TRANSPORT (EXPORT) #${tableIndex+1}</span>
-                            <div>
-                                <button onclick="addTransportRow(${tableIndex})" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold px-2 py-1 rounded mr-2 no-print"><i class="fas fa-plus"></i> Add New Location</button>
-                                ${removeBtn}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full tariff-table border-collapse trans-table">
-                            <thead>
-                                <tr>
-                                    <th>Transporter</th><th>Origin -></th><th>Destination</th><th>Return</th><th>Base Rate (₹)</th><th>Discount</th><th class="bg-gray-800 text-white">Cost to Party</th><th style="width:30px"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody_${tableIndex}"></tbody>
-                        </table>
-                    </div>`;
-                container.appendChild(wrapper);
-                addTransportRow(tableIndex, {transporter: 'HCPL', origin:'Dhiprpur', dest:'Amritsar', ret:'Dhiprpur', base:0, disc:0});
+            const parts = dateString.split('-');
+            if (parts.length !== 3) return dateString; // Return as is if not a date
+            
+            const [yyyy, mm, dd] = parts;
+            return `${dd}-${mm}-${yyyy}`;
+        }
+
+        function getTodayDate() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            let mm = today.getMonth() + 1;
+            let dd = today.getDate();
+            if (dd < 10) dd = '0' + dd;
+            if (mm < 10) mm = '0' + mm;
+            return yyyy + '-' + mm + '-' + dd; 
+        }
+
+        function populateDatalist() {
+            const datalist = document.getElementById('destinationPorts');
+            datalist.innerHTML = ''; 
+
+            MASTER_PORTS_LIST.forEach(port => {
+                const option = document.createElement('option');
+                option.value = port;
+                datalist.appendChild(option);
+            });
+        }
+        
+        function deleteAllData() {
+            const confirmation = confirm("WARNING: This will permanently delete ALL saved invoice data from your browser's local storage. Are you sure you want to proceed?");
+            
+            if (confirmation) {
+                localStorage.removeItem(STORAGE_KEY);
+                alert("🗑️ All saved data has been successfully deleted.");
+                loadAllData();
+            } else {
+                alert("Deletion cancelled.");
             }
         }
 
-        function removeTable(i) { if(confirm("Remove table?")) document.getElementById(`tableBlock_${i}`).remove(); }
-
-        function renderRailRows(idx) {
-            const tbody = document.getElementById(`tbody_${idx}`);
-            defaultRailRows.forEach((row, r) => {
-                const tr = document.createElement('tr');
-                if(row.size==='40"') tr.className="bg-pink-200"; 
-                const id = `input_t${idx}_r${r}`;
-                tr.innerHTML = `<td class="font-bold pos-cell text-center text-gray-800">Lower</td><td>${row.size}</td><td class="text-left px-2 whitespace-nowrap">${row.slab}</td><td class="read-only-cell">${row.public.toLocaleString()}</td><td class="read-only-cell">${row.cost.toLocaleString()}</td><td class="read-only-cell font-bold">${row.margin.toLocaleString()}</td><td><input type="number" id="${id}_discount" class="calc-input" oninput="calcRail(${idx},${r})" placeholder="0"></td><td class="read-only-cell text-[10px]" id="${id}_res_disc_per">0%</td><td><input type="number" id="${id}_incentive" class="calc-input" oninput="calcRail(${idx},${r})" placeholder="0"></td><td><input type="number" id="${id}_subPcs" class="calc-input" oninput="calcRail(${idx},${r})" placeholder="0"></td><td><input type="number" id="${id}_subHcpl" class="calc-input" oninput="calcRail(${idx},${r})" placeholder="0"></td><td class="read-only-cell font-bold text-blue-900" id="${id}_res_net_pcs">0</td><td class="read-only-cell font-bold text-blue-900" id="${id}_res_net_hcpl">0</td><td class="read-only-cell font-bold text-green-900 bg-green-200" id="${id}_res_final_rate">0</td>`;
-                tbody.appendChild(tr);
-                calcRail(idx, r);
-            });
+        function deleteRecord(bookingNo) {
+            if (confirm(`Are you sure you want to delete the record with Booking No: ${bookingNo}?`)) {
+                let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const updatedRecords = records.filter(record => record.bookingNo !== bookingNo);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRecords));
+                alert("Record deleted successfully! 🗑️");
+                loadAllData();
+            }
         }
 
-        function renderThcRows(idx) {
-            const tbody = document.getElementById(`tbody_${idx}`);
-            defaultThcRows.forEach((row, r) => {
-                const tr = document.createElement('tr');
-                if(row.size==='40"') tr.className="bg-pink-200";
-                const id = `input_thc_t${idx}_r${r}`;
-                tr.innerHTML = `<td>${row.size}</td><td class="text-left px-2 whitespace-nowrap">${row.slab}</td><td><input type="number" id="${id}_access" class="calc-input" oninput="calcThc(${idx},${r})" placeholder="0"></td><td class="read-only-cell font-bold" id="${id}_stuffing">${row.stuffing}</td><td class="read-only-cell">${row.fuel}</td><td class="read-only-cell">${row.data}</td><td class="read-only-cell">${row.infra}</td><td class="read-only-cell">${row.eic}</td><td class="read-only-cell font-bold text-gray-900" id="${id}_total">0</td><td><input type="number" id="${id}_disc_base" class="calc-input" oninput="calcThc(${idx},${r})" placeholder="0"></td><td><input type="number" id="${id}_disc_fuel" class="calc-input" oninput="calcThc(${idx},${r})" placeholder="0"></td><td><input type="number" id="${id}_disc_data" class="calc-input" oninput="calcThc(${idx},${r})" placeholder="0"></td><td><input type="number" id="${id}_disc_infra" class="calc-input" oninput="calcThc(${idx},${r})" placeholder="0"></td><td><input type="number" id="${id}_disc_eic" class="calc-input" oninput="calcThc(${idx},${r})" placeholder="0"></td><td class="read-only-cell font-bold text-green-900 bg-green-200" id="${id}_final_total">0</td>`;
-                tbody.appendChild(tr);
-                calcThc(idx, r);
-            });
-        }
-
-        function addTransportRow(tIdx, data = {}) {
-            const tbody = document.getElementById(`tbody_${tIdx}`);
-            const tr = document.createElement('tr');
-            const rIdx = Date.now() + Math.floor(Math.random() * 1000); 
-            const id = `trans_t${tIdx}_r${rIdx}`;
+        // --- 1. Data Save Function (using Local Storage) ---
+        function saveInvoiceData(formData) {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             
-            const options = locationOptions.map(loc => `<option value="${loc}" ${data.origin===loc?'selected':''}>${loc}</option>`).join('');
-            const optionsDest = locationOptions.map(loc => `<option value="${loc}" ${data.dest===loc?'selected':''}>${loc}</option>`).join('');
-            const optionsRet = locationOptions.map(loc => `<option value="${loc}" ${data.ret===loc?'selected':''}>${loc}</option>`).join('');
-
-            tr.innerHTML = `
-                <td><input type="text" id="${id}_transporter" value="${data.transporter || 'HCPL'}" class="w-full text-center bg-white border border-gray-400"></td>
-                <td><select id="${id}_origin" class="w-full text-xs border border-gray-400 p-1 bg-white">${options}</select></td>
-                <td><select id="${id}_dest" class="w-full text-xs border border-gray-400 p-1 bg-white">${optionsDest}</select></td>
-                <td><select id="${id}_return" class="w-full text-xs border border-gray-400 p-1 bg-white">${optionsRet}</select></td>
-                <td><input type="number" id="${id}_base" value="${data.base||0}" class="calc-input" oninput="calcTrans('${id}')"></td>
-                <td><input type="number" id="${id}_disc" value="${data.disc||0}" class="calc-input" oninput="calcTrans('${id}')"></td>
-                <td class="read-only-cell font-bold text-green-900 bg-green-200" id="${id}_cost">0</td>
-                <td class="text-center"><button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 no-print"><i class="fas fa-times"></i></button></td>
-            `;
-            tbody.appendChild(tr);
-            calcTrans(id); 
-        }
-
-        function calcRail(t, r) {
-            const base = defaultRailRows[r];
-            const id = `input_t${t}_r${r}`;
-            const get = (f) => parseFloat(document.getElementById(`${id}_${f}`).value)||0;
-            const d=get('discount'), i=get('incentive'), sp=get('subPcs'), sh=get('subHcpl');
-            document.getElementById(`${id}_res_disc_per`).innerText = (d>0?((d/base.public)*100).toFixed(1):0)+'%';
-            document.getElementById(`${id}_res_net_pcs`).innerText = (base.margin-i-sp).toLocaleString();
-            document.getElementById(`${id}_res_net_hcpl`).innerText = (base.margin-i-sh).toLocaleString();
-            document.getElementById(`${id}_res_final_rate`).innerText = (base.public-d).toLocaleString();
-        }
-
-        function calcThc(t, r) {
-            const base = defaultThcRows[r];
-            const id = `input_thc_t${t}_r${r}`;
-            const getVal = (key) => parseFloat(document.getElementById(`${id}_${key}`).value)||0;
-            const access = getVal('access');
-            const totalGross = access + base.stuffing + base.fuel + base.data + base.infra + base.eic;
-            const totalDisc = getVal('disc_base') + getVal('disc_fuel') + getVal('disc_data') + getVal('disc_infra') + getVal('disc_eic');
-            document.getElementById(`${id}_total`).innerText = totalGross.toLocaleString();
-            document.getElementById(`${id}_final_total`).innerText = (totalGross - totalDisc).toLocaleString();
-        }
-
-        function calcTrans(id) {
-            const base = parseFloat(document.getElementById(`${id}_base`).value) || 0;
-            const disc = parseFloat(document.getElementById(`${id}_disc`).value) || 0;
-            document.getElementById(`${id}_cost`).innerText = (base - disc).toLocaleString();
-        }
-
-        function updateRailPos(t, v) { document.getElementById(`tbody_${t}`).querySelectorAll('.pos-cell').forEach(c => c.innerText = v || "Lower"); }
-        function updateThcHeader(t, v) { document.getElementById(`thc_head_${t}`).innerText = v; }
-
-        // --- SAVE / SYNC ---
-        async function performSave() {
-            const d1=document.getElementById('dateFrom').value, d2=document.getElementById('dateTo').value, c=document.getElementById('customerName').value;
-            if(!c || !d1 || !d2) return alert("Fill mandatory fields");
+            const todayISO = getTodayDate();
             
-            let v = document.getElementById('version').value;
-            if(!v || v.includes('undefined')) { v="Version 1"; document.getElementById('version').value=v; }
-            const vName = `${c.toUpperCase()}_VERSION ${(v.replace(/Version\s*/i,'').trim()||"1").padStart(2,'0')}`;
-            const id = currentEntryId || Date.now();
-            const isUp = !!currentEntryId;
+            // Logic to handle missing Stuffing Date
+            const finalStuffingDate = formData.stuffingDate ? formData.stuffingDate : "Not Confirm";
 
-            const fd = {
-                id: id, tariffNo: document.getElementById('tariffNo').value, date: document.getElementById('dateToday').value,
-                rawCustomerName: c, customerName: vName, chaName: document.getElementById('chaName').value,
-                salesPerson: document.getElementById('salesPerson').value, validity: document.getElementById('validity').value,
-                paymentTerms: document.getElementById('paymentTerms').value, custStatus: document.getElementById('custStatus').value,
-                volumeInd: document.getElementById('volumeInd').value, chaInvolved: document.getElementById('chaInvolved').value,
-                stream: document.getElementById('stream').value, remarks: document.getElementById('remarks').value,
-                version: v, dateFrom: d1, dateTo: d2, gridData: []
+            const newData = {
+                saveDate: todayISO, 
+                bookingNo: formData.bookingNo,
+                invoiceDate: formData.invoiceDate,
+                containers: formData.otherReference,
+                shippingLine: formData.buyer,
+                finalDestination: formData.finalDestination,
+                location: formData.location,
+                invoiceNo: formData.invoiceNo,
+                initialCarriage: formData.initialCarriage,
+                portOfDischarge: formData.portOfDischarge,
+                countryOfOrigin: formData.countryOfOrigin,
+                packages: formData.packages,
+                cartonNos: formData.cartonNos,
+                stuffingDate: finalStuffingDate, // Updated logic
+                grossWeight: formData.grossWeight,
             };
 
-            document.querySelectorAll('.tariff-table-block').forEach((block) => {
-                const tIdx = block.dataset.index; 
-                const type = block.dataset.type;
+            const existingIndex = records.findIndex(r => r.bookingNo === newData.bookingNo);
+            if (existingIndex > -1) {
+                records[existingIndex] = newData;
+            } else {
+                records.push(newData);
+            }
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            
+            loadAllData();
+        }
+
+        // --- 2. CSV Download Function ---
+        function downloadData() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            if (records.length === 0) {
+                alert("No data available to download.");
+                return;
+            }
+
+            // Updated Header: Replaced 'Invoice Date' with 'Stuffing Date'
+            const headers = ["Save Date", "Booking No", "Stuffing Date", "Containers x20/x40", "Shipping Line", "Country of Final Destination", "Location"];
+            
+            let csvContent = headers.join(",") + "\n";
+            
+            records.forEach(record => {
+                // Using Stuffing Date for the CSV
+                const formattedStuffingDate = formatDate(record.stuffingDate || 'Not Confirm');
                 
-                if (type === 'rail') {
-                    const sl = document.getElementById(`shipping_line_${tIdx}`)?.value || "";
-                    defaultRailRows.forEach((rDef, rIdx) => {
-                        const id = `input_t${tIdx}_r${rIdx}`;
-                        if(document.getElementById(`${id}_discount`)) {
-                            const get = (f) => parseFloat(document.getElementById(`${id}_${f}`).value)||0;
-                            const txt = (f) => document.getElementById(`${id}_${f}`).innerText.replace(/,/g,'');
-                            fd.gridData.push({
-                                type: 'rail', pos: rDef.pos, size: rDef.size, slab: rDef.slab, shippingLine: sl,
-                                discount: get('discount'), incentive: get('incentive'), subPcs: get('subPcs'), subHcpl: get('subHcpl'),
-                                netPcs: txt('res_net_pcs'), netHcpl: txt('res_net_hcpl'), finalRate: txt('res_final_rate'),
-                                meta4: `Disc:${get('discount')}|Inc:${get('incentive')}|SubP:${get('subPcs')}|SubH:${get('subHcpl')}` 
-                            });
-                        }
-                    });
-                } else if (type === 'thc') {
-                    const stuffing = document.getElementById(`stuffing_type_${tIdx}`)?.value || "";
-                    defaultThcRows.forEach((rDef, rIdx) => {
-                        const id = `input_thc_t${tIdx}_r${rIdx}`;
-                        if(document.getElementById(`${id}_access`)) {
-                            const getVal = (key) => parseFloat(document.getElementById(`${id}_${key}`).value)||0;
-                            const acc = getVal('access');
-                            const dArr = [getVal('disc_base'), getVal('disc_fuel'), getVal('disc_data'), getVal('disc_infra'), getVal('disc_eic')];
-                            fd.gridData.push({
-                                type: 'thc', size: rDef.size, slab: rDef.slab, stuffingType: stuffing,
-                                access: acc, discs: dArr,
-                                totalGross: document.getElementById(`${id}_total`).innerText.replace(/,/g,''),
-                                finalNet: document.getElementById(`${id}_final_total`).innerText.replace(/,/g,''),
-                                meta4: `Access:${acc}|D:${dArr.join(',')}`
-                            });
-                        }
-                    });
-                } else if (type === 'transport') {
-                    const tbody = document.getElementById(`tbody_${tIdx}`);
-                    const rows = tbody.querySelectorAll('tr');
-                    rows.forEach(tr => {
-                        const inputs = tr.querySelectorAll('input, select');
-                        const transporter = inputs[0].value;
-                        const origin = inputs[1].value;
-                        const dest = inputs[2].value;
-                        const ret = inputs[3].value;
-                        const base = inputs[4].value;
-                        const disc = inputs[5].value;
-                        const cost = tr.querySelector('td:nth-child(7)').innerText.replace(/,/g,'');
-                        
-                        fd.gridData.push({
-                            type: 'transport', 
-                            transporter: transporter, origin: origin, dest: dest, ret: ret,
-                            base: base, disc: disc, cost: cost,
-                            meta4: `Base:${base}|Disc:${disc}` 
-                        });
-                    });
-                }
+                const row = [
+                    formatDate(record.saveDate), 
+                    record.bookingNo,
+                    formattedStuffingDate,
+                    record.containers,
+                    record.shippingLine,
+                    record.finalDestination,
+                    record.location
+                ];
+                csvContent += row.map(e => `"${e}"`).join(",") + "\n";
             });
 
-            let h = JSON.parse(localStorage.getItem('tariffHistory')) || [];
-            if(isUp) { const i = h.findIndex(x => x.id==id); if(i>-1) h[i]=fd; else h.push(fd); } else h.push(fd);
-            localStorage.setItem('tariffHistory', JSON.stringify(h));
-
-            const overlay = document.getElementById('loadingOverlay');
-            const txt = document.getElementById('loadingText');
-            overlay.style.display = 'flex';
-            try {
-                txt.innerText = "Syncing to Cloud...";
-                const hp = new FormData();
-                hp.append('Date', fd.date); hp.append('Name', `[MASTER] ${vName}`);
-                hp.append('Email', `CHA: ${fd.chaName} | Sales: ${fd.salesPerson} | Vol: ${fd.volumeInd}`);
-                hp.append('Phone', `Valid: ${fd.validity} | Terms: ${fd.paymentTerms}`);
-                hp.append('Department', `Dates: ${d1} to ${d2} | Stream: ${fd.stream} | Remarks: ${fd.remarks}`);
-                hp.append('City', `Ref: ${fd.tariffNo} | Status: ${fd.custStatus} | CHA_Inv: ${fd.chaInvolved}`);
-                await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:hp, mode:'no-cors'});
-                await new Promise(r=>setTimeout(r,800));
-
-                for(let i=0; i<fd.gridData.length; i++) {
-                    const row = fd.gridData[i];
-                    txt.innerText = `Saving Item ${i+1}...`;
-                    const gp = new FormData();
-                    gp.append('Date', fd.date); gp.append('Name', vName);
-                    
-                    if(row.type === 'rail') {
-                         gp.append('Email', `ITEM: ${row.size} ${row.slab} | Line: ${row.shippingLine}`);
-                         gp.append('Phone', `RATE: ${row.finalRate}`);
-                         gp.append('Department', `PCS: ${row.netPcs} | HCPL: ${row.netHcpl}`);
-                         gp.append('City', row.meta4); 
-                    } else if(row.type === 'thc') {
-                         gp.append('Email', `THC: ${row.size} ${row.slab} | Type: ${row.stuffingType}`);
-                         gp.append('Phone', `TOTAL: ${row.finalNet}`);
-                         gp.append('Department', `GROSS: ${row.totalGross}`);
-                         gp.append('City', row.meta4);
-                    } else if(row.type === 'transport') {
-                         gp.append('Email', `TRANS: ${row.transporter} | ${row.origin}->${row.dest}`);
-                         gp.append('Phone', `Total: ${row.cost}`);
-                         gp.append('Department', `Return: ${row.ret}`);
-                         gp.append('City', row.meta4);
-                    }
-                    
-                    await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:gp, mode:'no-cors'});
-                    await new Promise(r=>setTimeout(r,500));
-                }
-                syncWithCloudJSONP();
-                alert("Saved & Synced!");
-            } catch(e) { alert("Saved Locally (Network Error)"); } 
-            finally { overlay.style.display='none'; }
-        }
-
-        function syncWithCloud() { syncWithCloudJSONP(); }
-        function syncWithCloudJSONP() {
-            const st = document.getElementById('syncStatusText');
-            st.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Connecting...';
-            const cb = 'jsonpCallback_' + Date.now();
-            window[cb] = function(data) {
-                if (data && data.length > 0) { processCloudData(data); st.innerHTML = `<i class="fas fa-check-circle text-green-600"></i> Synced (${data.length})`; populateSuggestions(); }
-                else st.innerText = "Sheet Empty.";
-                document.getElementById(cb).remove(); delete window[cb];
-            };
-            const s = document.createElement('script');
-            s.src = `${GOOGLE_SCRIPT_URL}?callback=${cb}&action=read&t=${Date.now()}`;
-            s.id = cb;
-            s.onerror = function() { st.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i> Failed'; document.getElementById(cb).remove(); delete window[cb]; document.getElementById('manualSyncModal').style.display = 'flex'; };
-            document.body.appendChild(s);
-        }
-
-        function processManualData() {
-            try {
-                const raw = JSON.parse(document.getElementById('manualDataInput').value);
-                if(Array.isArray(raw)) { processCloudData(raw); populateSuggestions(); document.getElementById('manualSyncModal').style.display='none'; alert("Loaded!"); }
-                else alert("Invalid Data");
-            } catch(e) { alert("Error parsing data"); }
-        }
-
-        function processCloudData(rows) {
-            const restored = [];
-            let cur = null;
-            rows.forEach(row => {
-                const nameCol = row[1];
-                if (!nameCol) return;
-                if (nameCol.toString().startsWith('[MASTER]')) {
-                    if (cur) restored.push(cur);
-                    const actualName = nameCol.replace('[MASTER] ', '').trim();
-                    const col2=(row[2]||"").toString(), col3=(row[3]||"").toString(), col4=(row[4]||"").toString(), col5=(row[5]||"").toString();
-                    const ex = (s, k) => (s.split('|').find(p=>p.trim().startsWith(k+':'))||"").split(':')[1]?.trim() || "";
-                    cur = {
-                        id: Date.now()+Math.random(), date: row[0], customerName: actualName, rawCustomerName: actualName.split('_')[0],
-                        chaName: ex(col2,'CHA'), salesPerson: ex(col2,'Sales'), volumeInd: ex(col2,'Vol'),
-                        validity: ex(col3,'Valid'), paymentTerms: ex(col3,'Terms'), remarks: ex(col4,'Remarks'),
-                        tariffNo: ex(col5,'Ref'), custStatus: ex(col5,'Status'), chaInvolved: ex(col5,'CHA_Inv'),
-                        stream: ex(col4,'Stream')||'DHIRPUR-MUNDRA',
-                        dateFrom: (col4.split('Dates:')[1]||"").split('to')[0]?.trim(),
-                        dateTo: (col4.split('to')[1]||"").split('|')[0]?.trim(),
-                        gridData: [], 
-                        version: "Version " + (actualName.split('_')[1]?.replace('VERSION ','')||'1')
-                    };
-                } else if (cur && nameCol === cur.customerName) {
-                    const col2 = (row[2]||"").toString();
-                    let type = 'rail';
-                    if (col2.includes("THC:")) type = 'thc';
-                    if (col2.includes("TRANS:")) type = 'transport';
-                    
-                    cur.gridData.push({
-                        type: type,
-                        meta1: row[2], meta2: row[3], meta3: row[4], meta4: row[5]
-                    });
-                }
-            });
-            if (cur) restored.push(cur);
-            localStorage.setItem('tariffHistory', JSON.stringify(restored));
-        }
-
-        function loadEntryIntoForm(e) {
-            document.getElementById('customerName').value = e.rawCustomerName||"";
-            document.getElementById('chaName').value = e.chaName||"";
-            document.getElementById('salesPerson').value = e.salesPerson||"";
-            document.getElementById('paymentTerms').value = e.paymentTerms||"";
-            document.getElementById('custStatus').value = e.custStatus||"";
-            document.getElementById('volumeInd').value = e.volumeInd||"";
-            document.getElementById('chaInvolved').value = e.chaInvolved||"";
-            document.getElementById('stream').value = e.stream||"";
-            document.getElementById('tariffNo').value = e.tariffNo||"";
-            document.getElementById('remarks').value = e.remarks||"";
-            document.getElementById('version').value = e.version||"Version 1";
-            if(e.dateFrom) document.getElementById('dateFrom').value = e.dateFrom;
-            if(e.dateTo) document.getElementById('dateTo').value = e.dateTo;
-            calculateMonths();
-
-            document.getElementById('tablesContainer').innerHTML = '';
-            tableCounter = 0;
-            if(!e.gridData) return;
-
-            let buffer = [];
-            e.gridData.forEach((row) => {
-                const rowType = row.type;
-                if (buffer.length > 0 && buffer[0].type !== rowType) {
-                    flushBuffer(buffer);
-                    buffer = [];
-                }
-                if ((rowType === 'rail' || rowType === 'thc') && buffer.length === 6) {
-                    flushBuffer(buffer);
-                    buffer = [];
-                }
-                buffer.push(row);
-            });
-            if(buffer.length > 0) flushBuffer(buffer);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
             
-            function flushBuffer(rows) {
-                const type = rows[0].type;
-                const tIdx = tableCounter; 
-                if (type === 'rail') {
-                    addNewRailTable();
-                    const line = rows[0].meta1.split('Line:')[1]?.trim() || "";
-                    document.getElementById(`shipping_line_${tIdx}`).value = line;
-                    updateRailPos(tIdx, line);
-                    rows.forEach((d, rIdx) => {
-                        const id = `input_t${tIdx}_r${rIdx}`;
-                        const m4 = d.meta4 || "";
-                        const ex = (k) => (m4.split('|').find(p=>p.trim().startsWith(k+':'))||"").split(':')[1]?.trim() || 0;
-                        document.getElementById(`${id}_discount`).value = ex('Disc');
-                        document.getElementById(`${id}_incentive`).value = ex('Inc');
-                        document.getElementById(`${id}_subPcs`).value = ex('SubP');
-                        document.getElementById(`${id}_subHcpl`).value = ex('SubH');
-                        calcRail(tIdx, rIdx);
-                    });
-                } else if (type === 'thc') {
-                    addNewThcTable();
-                    const stuffing = rows[0].meta1.split('Type:')[1]?.trim() || "FACTORY STUFFING";
-                    document.getElementById(`stuffing_type_${tIdx}`).value = stuffing;
-                    updateThcHeader(tIdx, stuffing);
-                    rows.forEach((d, rIdx) => {
-                        const id = `input_thc_t${tIdx}_r${rIdx}`;
-                        const m4 = d.meta4 || "";
-                        const acc = (m4.split('|').find(p=>p.trim().startsWith('Access:'))||"").split(':')[1]?.trim() || 0;
-                        const discsStr = (m4.split('|').find(p=>p.trim().startsWith('D:'))||"").split(':')[1]?.trim() || "0,0,0,0,0";
-                        const discs = discsStr.split(',');
-                        document.getElementById(`${id}_access`).value = acc;
-                        document.getElementById(`${id}_disc_base`).value = discs[0] || 0;
-                        document.getElementById(`${id}_disc_fuel`).value = discs[1] || 0;
-                        document.getElementById(`${id}_disc_data`).value = discs[2] || 0;
-                        document.getElementById(`${id}_disc_infra`).value = discs[3] || 0;
-                        document.getElementById(`${id}_disc_eic`).value = discs[4] || 0;
-                        calcThc(tIdx, rIdx);
-                    });
-                } else if (type === 'transport') {
-                    addNewTransportTable();
-                    const tbody = document.getElementById(`tbody_${tIdx}`);
-                    tbody.innerHTML = '';
-                    rows.forEach(d => {
-                        const parts = d.meta1.split('|');
-                        const transporter = parts[0].replace('TRANS:','').trim();
-                        const route = parts[1] ? parts[1].split('->') : ['',''];
-                        const ret = d.meta3.split('Return:')[1]?.trim();
-                        const m4 = d.meta4 || "";
-                        const ex = (k) => (m4.split('|').find(p=>p.trim().startsWith(k+':'))||"").split(':')[1]?.trim() || 0;
-                        addTransportRow(tIdx, {
-                            transporter: transporter, origin: route[0]?.trim(), dest: route[1]?.trim(),
-                            ret: ret, base: ex('Base'), disc: ex('Disc')
-                        });
-                    });
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Invoice_Data_${getTodayDate()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- 3. Load and Display ALL Data Function ---
+        function loadAllData() {
+            allRecords = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            displayData(allRecords); 
+        }
+
+        function displayData(records) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = ''; 
+
+            records.forEach(record => {
+                const row = tbody.insertRow();
+                
+                // UPDATED TABLE LOGIC: 
+                // 1. Save Date Removed
+                // 2. Location moved to first
+                
+                // 1. Location (First)
+                row.insertCell().textContent = record.location;
+                
+                // 2. Booking No
+                row.insertCell().textContent = record.bookingNo;
+                
+                // 3. Stuffing Date
+                const sDate = record.stuffingDate || 'Not Confirm';
+                row.insertCell().textContent = formatDate(sDate);
+                
+                // 4. Containers
+                row.insertCell().textContent = record.containers;
+                
+                // 5. Shipping Line
+                row.insertCell().textContent = record.shippingLine;
+                
+                // 6. Country of Final Destination
+                row.insertCell().textContent = record.finalDestination;
+
+                // Action Cell
+                const actionCell = row.insertCell();
+                actionCell.classList.add('action-cell');
+                
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit/Load 📝';
+                editButton.classList.add('edit-btn');
+                editButton.onclick = () => loadDataToForm(record); 
+                actionCell.appendChild(editButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete ❌';
+                deleteButton.classList.add('delete-btn');
+                deleteButton.onclick = () => deleteRecord(record.bookingNo);
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        function loadDataToForm(record) {
+            document.getElementById('invoiceNo').value = record.invoiceNo || '';
+            document.getElementById('invoiceDate').value = record.invoiceDate || '';
+            document.getElementById('otherReference').value = record.containers || '';
+            document.getElementById('buyer').value = record.shippingLine || '';
+            document.getElementById('bookingNo').value = record.bookingNo || '';
+            document.getElementById('initialCarriage').value = record.initialCarriage || 'Prepaid';
+            document.getElementById('portOfDischarge').value = record.portOfDischarge || 'MUNDRA';
+            document.getElementById('countryOfOrigin').value = record.countryOfOrigin || 'INDIA';
+            document.getElementById('packages').value = record.packages || '';
+            document.getElementById('cartonNos').value = record.cartonNos || 'EXP983';
+            document.getElementById('grossWeight').value = record.grossWeight || '';
+            
+            // Handle stuffing date for Edit
+            // If it is 'Not Confirm', we leave the date picker empty
+            const savedStuffingDate = record.stuffingDate;
+            if (savedStuffingDate === 'Not Confirm') {
+                document.getElementById('stuffingDate').value = '';
+            } else {
+                document.getElementById('stuffingDate').value = savedStuffingDate || '';
+            }
+            
+            document.getElementById('finalDestination').value = record.finalDestination || '';
+            document.getElementById('location').value = record.location || '';
+            
+            alert(`Data for Booking No. ${record.bookingNo} loaded into the form for editing/resending.`);
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const todayISO = getTodayDate();
+            document.getElementById('invoiceDate').value = todayISO;
+            document.getElementById('invoiceNo').value = generateRandomInvoiceNo();
+            document.getElementById('packages').value = 500; 
+            populateDatalist(); 
+            loadAllData(); 
+        });
+
+        // Form Submission (Updated for Single Click Workflow)
+        document.getElementById('invoiceForm').addEventListener('submit', function (event) {
+            event.preventDefault(); 
+            
+            document.querySelectorAll('#invoiceForm *').forEach(el => el.classList.remove('highlight-error'));
+
+            let formIsValid = true;
+            const formData = {}; 
+            
+            // Collect ALL form data first (even non-required ones like optional stuffing date)
+            const allInputs = document.querySelectorAll('#invoiceForm input, #invoiceForm select');
+            allInputs.forEach(input => {
+                if (input.name) {
+                    formData[input.name] = input.value.trim();
                 }
+            });
+
+            // Validate ONLY required fields
+            const requiredFields = document.querySelectorAll('#invoiceForm [required]');
+            requiredFields.forEach(field => {
+                const fieldValue = field.value.trim(); 
+                
+                if (!fieldValue || (field.id === 'finalDestination' && !fieldValue)) {
+                    field.classList.add('highlight-error');
+                    formIsValid = false;
+                }
+                
+                if (field.id === 'packages' && parseInt(field.value) < 500) {
+                    field.classList.add('highlight-error');
+                    formIsValid = false;
+                }
+            });
+
+            if (!formIsValid) {
+                alert("Missing Entry");
+                return; 
+            }
+            
+            // --- If form is valid, continue with saving and display ---
+            saveInvoiceData(formData); 
+            
+            // --- Populate invoice fields for display ---
+            document.getElementById('displayLocationHeader').textContent = formData.location;
+            document.getElementById('displayInvoiceNo').textContent = `${formData.invoiceNo} | ${formatDate(formData.invoiceDate)}`;
+            document.getElementById('displayOtherReference').textContent = formData.otherReference;
+            document.getElementById('displayBuyer').textContent = formData.buyer;
+            document.getElementById('displayBookingNo').textContent = formData.bookingNo;
+            document.getElementById('displayInitialCarriage').textContent = formData.initialCarriage;
+            document.getElementById('displayPortOfDischarge').textContent = formData.portOfDischarge;
+            document.getElementById('displayCountryOfOrigin').textContent = formData.countryOfOrigin;
+            document.getElementById('displayFinalDestination').textContent = formData.finalDestination; 
+            document.getElementById('displayPackages').textContent = formData.packages;
+            document.getElementById('displayCartonNos').textContent = formData.cartonNos;
+            document.getElementById('displayLocation').textContent = formData.location; 
+            
+            // Display 'Not Confirm' in Invoice view if empty
+            const displaySDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : 'Not Confirm';
+            document.getElementById('displayStuffingDate').textContent = displaySDate;
+            
+            document.getElementById('displayGrossWeight').textContent = formData.grossWeight;
+            document.getElementById('displayDate').textContent = formatDate(formData.invoiceDate);
+
+            document.getElementById('invoice').style.display = 'block';
+            document.getElementById('invoice').scrollIntoView({ behavior: 'smooth' });
+
+            setTimeout(() => {
+                saveAsPDF(true); 
+            }, 500);
+        });
+
+        // --- UPDATED: WhatsApp Share Function ---
+        function shareOnWhatsApp() {
+            const buyer = document.getElementById('buyer').value || '';
+            const containers = document.getElementById('otherReference').value || '';
+            const finalDestination = document.getElementById('finalDestination').value || '';
+            const location = document.getElementById('location').value || '';
+            const stuffingDate = document.getElementById('stuffingDate').value;
+            const bookingNo = document.getElementById('bookingNo').value || '';
+
+            // Handle date for WhatsApp message
+            const sDateMsg = stuffingDate ? formatDate(stuffingDate) : "Not Confirm";
+
+            const message = `*Dear HCPL Team*\n--------------------\n` +
+                `*Containers:* ${containers}\n` +
+                `*Booking No:* ${bookingNo}\n` +
+                `*Line:* ${buyer}\n` +	
+                `*Loading Location:* ${location}\n` +
+                `*Final Destination:* ${finalDestination}\n` +
+                `------------------\n` +
+                `*Stuffing Date:* ${sDateMsg}\n` +
+                `------------------\n` +
+                `*Thanks:*\n(Please arrange to Move the containers.)`;
+            
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappURL = `whatsapp://send?text=${encodedMessage}`;
+            window.location.href = whatsappURL;
+        }
+
+        function shareBulkTableDataAsImage() {
+            const tableElement = document.getElementById('dataTable');
+            const container = document.getElementById('imageCaptureArea');
+            
+            if (tableElement.querySelector('tbody').rows.length === 0) {
+                alert("Table में कोई डेटा नहीं है जिसे शेयर किया जा सके।");
+                return;
+            }
+
+            const clonedTable = tableElement.cloneNode(true);
+            clonedTable.id = 'dataTableClone';
+            
+            clonedTable.querySelector('thead tr').lastElementChild.remove();
+            clonedTable.querySelectorAll('.action-cell').forEach(cell => cell.remove());
+            
+            container.innerHTML = `
+                <div id="bulkCaptureContent">
+                    <h3>All Container Records (${getTodayDate()})</h3>
+                    ${clonedTable.outerHTML}
+                    <p style="text-align: right; font-size: 0.7em; margin-top: 5px;">*Generated by App.</p>
+                </div>
+            `;
+            
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.display = 'block';
+
+            html2canvas(document.getElementById('bulkCaptureContent'), {
+                scale: 2, 
+                logging: false, 
+                useCORS: true,
+                backgroundColor: 'white'
+            }).then(canvas => {
+                container.style.display = 'none';
+                handleImageSharing(canvas, "All_Container_Records.png");
+            }).catch(error => {
+                console.error("Bulk Image generation failed:", error);
+                container.style.display = 'none';
+                alert("इमेज बनाने में समस्या आई।");
+            });
+        }
+        
+        function handleImageSharing(canvas, filename) { 
+            const imgData = canvas.toDataURL('image/png'); 
+            if (navigator.share) {
+                canvas.toBlob((blob) => {
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    navigator.share({
+                        files: [file],
+                        title: 'All Container Records',
+                        text: `*Full Container Report* \n\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}`,
+                    }).then(() => console.log('Image shared successfully')).catch(error => {
+                        console.error('Error sharing file:', error);
+                        alert('Image sharing failed. Falling back to simple text message.');
+                        const fallbackText = `*Full Container Report*\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}.\n\n(Please check the web application for details.)`;
+                        window.location.href = `whatsapp://send?text=${encodeURIComponent(fallbackText)}`;
+                    });
+                }, 'image/png');
+            } else {
+                alert("आपका ब्राउज़र सीधे इमेज शेयरिंग को सपोर्ट नहीं करता है। आपको मैन्युअल रूप से स्क्रीनशॉट लेना होगा। टेक्स्ट मैसेज के लिए OK दबाएँ।");
+                const fallbackText = `*Full Container Report*\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}.\n\n(Please check the web application for details.)`;
+                window.location.href = `whatsapp://send?text=${encodeURIComponent(fallbackText)}`;
             }
         }
-        function checkVersion() { if(!currentEntryId) { const n=document.getElementById('customerName').value.trim(); const h=JSON.parse(localStorage.getItem('tariffHistory'))||[]; const c=h.filter(x=>x.rawCustomerName && x.rawCustomerName.toLowerCase()===n.toLowerCase()).length; document.getElementById('version').value = `Version ${c+1}`; }}
-        function generateTariffID() { document.getElementById('tariffNo').value = `TS-${new Date().getFullYear()}${Math.floor(1000+Math.random()*9000)}`; }
-        function calculateMonths() { const d1=new Date(document.getElementById('dateFrom').value), d2=new Date(document.getElementById('dateTo').value); if(d1&&d2&&d2>d1){ let m=(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth()); if(d2.getDate()<d1.getDate())m--; document.getElementById('validity').value=`${m} Months (${Math.ceil(Math.abs(d2-d1)/(86400000))} Days)`; } }
-        function resetForm() { if(confirm("Reset?")) { document.querySelectorAll('input:not([readonly]), select, textarea').forEach(i=>i.value=''); currentEntryId=null; generateTariffID(); document.getElementById('tablesContainer').innerHTML=''; tableCounter=0; addNewRailTable(); document.getElementById('version').value="Version 1"; }}
-        function populateSuggestions() { const h=JSON.parse(localStorage.getItem('tariffHistory'))||[]; const dd=document.getElementById('historyDropdown'); dd.innerHTML='<option value="">-- Select --</option>'; [...h].reverse().forEach(x=>{const o=document.createElement('option'); o.value=x.id; o.text=`${x.customerName} (${x.date})`; dd.appendChild(o);}); const custs=[...new Set(h.map(i=>i.rawCustomerName))]; document.getElementById('customerSuggestions').innerHTML=custs.map(c=>`<option value="${c}">`).join(''); }
-        function initiateSave() { if(prompt("Enter Password:")!=="4209211") return alert("Wrong Password"); performSave(); }
-        function loadFromDropdown(id) { if(!id) return; const h=JSON.parse(localStorage.getItem('tariffHistory'))||[]; const e=h.find(x=>x.id==id); if(e){loadEntryIntoForm(e); currentEntryId=e.id;} }
-        function performSearch() { const v=document.getElementById('searchBox').value.toLowerCase().replace(/\s+/g,'').trim(); if(!v) return alert("Type name"); const h=JSON.parse(localStorage.getItem('tariffHistory'))||[]; const e=h.find(x=>x.customerName.toLowerCase().replace(/\s+/g,'').includes(v)); if(e){loadEntryIntoForm(e); currentEntryId=e.id;}else alert("Not found"); }
-        function openOutlook() { const c=document.getElementById('customerName').value, t=document.getElementById('tariffNo').value; if(!c)return alert("Name?"); window.location.href=`mailto:?subject=${encodeURIComponent(`Tariff: ${c} (${t})`)}&body=Attached.`; }
+
+        function generateRandomInvoiceNo() { return 'INV' + Math.floor(Math.random() * 1000000); }
+
+        function saveAsPDF(autoTriggerWhatsApp = false) {
+            const invoiceElement = document.getElementById('invoice');
+            const printButtons = document.getElementById('printButtons');
+            const bookingNo = document.getElementById('displayBookingNo').textContent || document.getElementById('bookingNo').value; 
+            const filename = `${bookingNo}_Invoice.pdf`; 
+
+            if (!bookingNo) {
+                        alert("Booking No Missing");
+                        return;
+            }
+
+            printButtons.style.display = 'none';
+            invoiceElement.classList.add('pdf-render-fix'); 
+
+            const pdfWidthMM = 210; 
+            const pdfHeightMM = 297; 
+            
+            html2canvas(invoiceElement, {
+                scale: 3, 
+                logging: false, 
+                useCORS: true, 
+            }).then((canvas) => {
+                invoiceElement.classList.remove('pdf-render-fix');
+                
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                
+                const margin = 10;
+                const contentWidthMM = pdfWidthMM - (margin * 2); 
+                const imgHeightMM = (canvas.height * contentWidthMM) / canvas.width; 
+                const pageContentHeight = pdfHeightMM - (margin * 2);
+                
+                let heightLeft = imgHeightMM;
+                let position = margin; 
+
+                doc.addImage(imgData, 'JPEG', margin, position, contentWidthMM, imgHeightMM);
+                heightLeft -= pageContentHeight; 
+
+                while (heightLeft > 0) {
+                    position = (pageContentHeight * -1); 
+                    doc.addPage();
+                    doc.addImage(imgData, 'JPEG', margin, position, contentWidthMM, imgHeightMM);
+                    heightLeft -= pageContentHeight;
+                }
+
+                doc.save(filename); 
+
+                printButtons.style.display = 'block';
+
+                if (!autoTriggerWhatsApp) {
+                    const userConfirmed = confirm(`✅ Invoice Saved in Download Folder.\n\nFile: ${filename}\n\n Do you Want to Open Invoice Yes or No?`);
+                    if (userConfirmed) {
+                        const pdfBlob = doc.output('blob');
+                        const pdfUrl = URL.createObjectURL(pdfBlob);
+                        window.open(pdfUrl, '_blank');
+                    }
+                } else {
+                    setTimeout(() => {
+                        shareOnWhatsApp();
+                    }, 1000);
+                }
+
+            }).catch(error => {
+                console.error("PDF generation failed:", error);
+                alert("PDF बनाने में समस्या आई। कृपया पुनः प्रयास करें।");
+                
+                invoiceElement.classList.remove('pdf-render-fix');
+                printButtons.style.display = 'block';
+            });
+        }
     </script>
 </body>
 </html>
