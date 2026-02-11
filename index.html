@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Export Invoice & Data Management</title>
+    
+    <!-- FIREBASE LIBRARIES (Added for Sync) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <style>
         /* General Styles */
         body {
@@ -57,7 +66,7 @@
             transition: border-color 0.3s, background-color 0.3s;
         }
         
-        /* New Wrapper for 2x2 Grid on Mobile */
+        /* New Wrapper for Grid */
         .input-group {
             display: flex;
             flex-wrap: wrap;
@@ -65,9 +74,10 @@
             margin-bottom: 10px;
         }
         
-        /* New Input Item Container */
+        /* New Input Item Container - UPDATED FOR 3 COLUMNS */
         .input-item {
-            width: 100%;
+            /* (100% - 20px gap) / 3 items = approx 33.33% - 7px */
+            width: calc(33.333% - 7px);
             box-sizing: border-box;
         }
 
@@ -78,10 +88,41 @@
             box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) !important;
         }
 
-        /* --- Full Width Action Button Container --- */
-        .full-width-action {
+        /* --- UPDATED: Action Button Group --- */
+        .action-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
             margin-top: 20px;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .action-group button {
+            flex: 1; /* Grow to fill space */
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            min-width: 200px; /* Minimum width for buttons */
+            transition: opacity 0.3s;
+        }
+        
+        .action-group button:hover {
+            opacity: 0.9;
+        }
+
+        /* Specific Action Button Colors */
+        #btnWhatsApp {
+            background-color: #25D366; /* WhatsApp Green */
+        }
+        #btnPdfOnly {
+            background-color: #007bff; /* Primary Blue */
+        }
+        #btnOutlook {
+            background-color: #0078d4; /* Outlook Blue */
         }
 
         /* --- Custom Button Grid and Styles (2x2) --- */
@@ -92,8 +133,8 @@
             margin-bottom: 10px;
         }
 
-        .form-container button {
-            /* General button styling */
+        .button-grid button {
+            width: calc(50% - 5px); /* Half width minus gap */
             padding: 12px;
             color: white;
             border: none;
@@ -102,24 +143,13 @@
             font-size: 1rem;
             margin-top: 0;
             transition: background-color 0.3s;
-            width: 100%; /* Default width for safety */
         }
 
-        .button-grid button {
-            width: calc(50% - 5px); /* Half width minus gap */
-        }
-
-        .form-container button:hover, .button-grid button:hover {
+        .button-grid button:hover {
             opacity: 0.9;
         }
 
-        /* Specific Button Styles */
-        #generateInvoiceBtn {
-            width: 100%;
-            background-color: #007bff; /* Blue for primary action */
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
+        /* Specific Utility Button Styles */
         #downloadCsvBtn {
             background-color: #f44336; /* Red for download/danger */
         }
@@ -130,20 +160,33 @@
             background-color: #00A86B; /* Darker Green for Bulk Share */
         }
         
-        /* --- MEDIA QUERY for Mobile View (Input Fields) --- */
+        /* --- MEDIA QUERY for Mobile View --- */
         @media (max-width: 768px) {
             .input-item {
-                width: calc(50% - 5px);
+                width: calc(50% - 5px); /* Keep 2 columns on mobile */
             }
-            /* Hide non-essential columns on smaller screens for better fit */
-            /* Adjusted Logic for New Column Order */
-            /* 1:Location, 2:BookingNo, 3:StuffingDate, 4:Containers, 5:ShippingLine, 6:Dest */
+            .action-group {
+                flex-direction: column; /* Stack buttons on mobile */
+            }
+            .action-group button {
+                width: 100%;
+            }
             
-            #dataTable th:nth-child(3), /* Stuffing Date */
-            #dataTable td:nth-child(3), 
-            #dataTable th:nth-child(6), /* Country of Final Destination */
-            #dataTable td:nth-child(6) { 
+            /* UPDATED INDICES FOR NEW COLUMN ORDER: 
+               1:Select, 2:Mail, 3:Location, 4:Booking, 5:Stuffing, 6:Cont, 7:Line, 8:Dest, 9:Action 
+            */
+            #dataTable th:nth-child(5), /* Stuffing Date */
+            #dataTable td:nth-child(5), 
+            #dataTable th:nth-child(8), /* Country of Final Destination */
+            #dataTable td:nth-child(8) { 
                 display: none;
+            }
+        }
+        
+        /* Extra small screens (Portrait Phones) */
+        @media (max-width: 480px) {
+            .input-item {
+                width: 100%; /* 1 column on very small screens */
             }
         }
         
@@ -187,6 +230,24 @@
             white-space: nowrap;
             vertical-align: middle;
         }
+        /* Select Checkbox Cell Style */
+        .select-cell {
+            text-align: center !important;
+            width: 1%;
+            vertical-align: middle;
+        }
+        .record-select {
+            transform: scale(1.5); /* Make checkbox bigger */
+            cursor: pointer;
+        }
+        /* Mail Status Cell Style */
+        .mail-cell {
+            text-align: center;
+            font-weight: bold;
+            color: #28a745;
+            white-space: nowrap;
+        }
+        
         .edit-btn {
             background-color: #ff9800; /* Orange for Edit */
             padding: 6px 10px;
@@ -330,11 +391,51 @@
         .print-button button:hover {
             background-color: #333;
         }
+
+        /* --- NOTIFICATION POPUP STYLES --- */
+        #notificationPopup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745; /* Green */
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            width: 320px;
+            border: 2px solid #fff;
+            animation: slideIn 0.5s ease-out;
+        }
+        #notificationPopup h4 { margin: 0 0 8px 0; font-size: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.5); padding-bottom: 5px; }
+        #notificationPopup p { margin: 0 0 15px 0; font-size: 0.95rem; line-height: 1.4; }
+        #notificationPopup button {
+            background: white;
+            color: #28a745;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            float: right;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #notificationPopup button:hover { background-color: #f0f0f0; }
+        @keyframes slideIn {
+            from { right: -350px; opacity: 0; }
+            to { right: 20px; opacity: 1; }
+        }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
+
+    <!-- NOTIFICATION POPUP -->
+    <div id="notificationPopup">
+        <h4>Received !!!</h4>
+        <p id="popupMessage">New Planning Details...</p>
+        <button onclick="closePopup()">OK</button>
+    </div>
 
     <div class="form-container">
         <h2>Generate Invoice</h2>
@@ -398,7 +499,6 @@
                 
                 <div class="input-item">
                     <label for="stuffingDate">Stuffing Date:</label>
-                    <!-- Removed 'required' attribute here so it can be optional -->
                     <input type="date" id="stuffingDate" name="stuffingDate">
                 </div>
 
@@ -420,8 +520,11 @@
             </select>
         </form>
         
-        <div class="full-width-action">
-            <button type="submit" id="generateInvoiceBtn" form="invoiceForm">Generate, Save PDF & WhatsApp 🚀</button>
+        <!-- Action Buttons -->
+        <div class="action-group">
+            <button type="button" id="btnPdfOnly" onclick="handleInvoiceAction('pdf')">Generate & Save PDF 📥</button>
+            <button type="button" id="btnOutlook" onclick="handleInvoiceAction('outlook')">Open Outlook Email 📧</button>
+            <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Generate, Save & WhatsApp 🚀</button>
         </div>
         
         <div class="button-grid">
@@ -437,7 +540,9 @@
         <table id="dataTable">
             <thead>
                 <tr>
-                    <!-- UPDATED: Reordered - Location First, Save Date Hidden -->
+                    <!-- UPDATED: Reordered Columns -->
+                    <th>Select</th>
+                    <th>Mail</th>
                     <th>Location</th>
                     <th>Booking No</th>
                     <th>Stuffing Date</th>
@@ -542,6 +647,33 @@
     </div>
 
     <script>
+        // ==========================================
+        //  FIREBASE INIT FOR SYNC
+        // ==========================================
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyDVBKC6l1iQ4DB83ppyBoyBvcgCU5gfi68",
+            authDomain: "mybillingapp-38c65.firebaseapp.com",
+            projectId: "mybillingapp-38c65",
+            storageBucket: "mybillingapp-38c65.firebasestorage.app",
+            messagingSenderId: "568659651466",
+            appId: "1:568659651466:web:9bfb8b7d4cf5af940f7673"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : "mybillingapp-38c65";
+
+        let db; // Firestore instance
+        let auth;
+
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            
+            // Auto Login for Write Access
+            auth.signInAnonymously().catch(e => console.error("Auth Error", e));
+        }
+
+        const SALES_COLLECTION_PATH = ['artifacts', appId, 'public', 'data', 'sales_records']; // Logical Path
+
         // Key for Local Storage
         const STORAGE_KEY = 'invoiceDataRecords';
 
@@ -651,14 +783,107 @@
             }
         }
 
+        // --- NEW: Sync to Firestore Function (UPDATED FOR DUPLICATE CHECK & MERGE) ---
+        async function syncToFirestore(record) {
+            if (!db) return; // If firebase failed to load
+
+            // 1. Parse Container
+            let c20 = 0, c40 = 0;
+            const containerStr = (record.containers || "").toLowerCase();
+            const match = containerStr.match(/(\d+)\s*[x*]\s*(20|40)/);
+            if (match) {
+                const count = parseInt(match[1]);
+                const size = match[2];
+                if (size === '20') c20 = count;
+                if (size === '40') c40 = count;
+            }
+
+            // Target Fields
+            const targetDate = record.stuffingDate !== 'Not Confirm' ? record.stuffingDate : getTodayDate();
+            const targetCustomer = record.location;
+            
+            // New Remark Fragment: "Line [Size]" (e.g. "MSC LINE 1x20")
+            const newRemarkFragment = `${record.shippingLine} ${record.containers}`;
+
+            const collectionRef = db.collection('artifacts').doc(appId)
+                    .collection('public').doc('data')
+                    .collection('sales_records');
+
+            try {
+                // Check for existing record
+                const querySnapshot = await collectionRef
+                    .where('customerName', '==', targetCustomer)
+                    .where('entryDate', '==', targetDate) // entryDate matches stuffingDate per previous logic
+                    .get();
+
+                if (!querySnapshot.empty) {
+                    // UPDATE EXISTING RECORD (MERGE)
+                    const doc = querySnapshot.docs[0];
+                    const data = doc.data();
+
+                    const existing20 = parseInt(data.container20) || 0;
+                    const existing40 = parseInt(data.container40) || 0;
+                    const existingRemarks = data.remarks || "";
+
+                    // New Totals
+                    const newTotal20 = existing20 + c20;
+                    const newTotal40 = existing40 + c40;
+                    
+                    // Append Remarks (Comma separated)
+                    let newRemarks = existingRemarks;
+                    if (newRemarks) {
+                        newRemarks += `, ${newRemarkFragment}`;
+                    } else {
+                        newRemarks = `Line: ${newRemarkFragment}`;
+                    }
+
+                    await doc.ref.update({
+                        container20: newTotal20.toString(),
+                        container40: newTotal40.toString(),
+                        remarks: newRemarks,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log("Synced: Merged into existing record.");
+
+                } else {
+                    // CREATE NEW RECORD
+                    const payload = {
+                        salesPerson: "Kunal Sahi",
+                        customerName: targetCustomer,
+                        location: targetCustomer,
+                        container20: c20.toString(),
+                        container40: c40.toString(),
+                        containerDbl20: "0",
+                        stuffingDate: record.stuffingDate !== 'Not Confirm' ? record.stuffingDate : "",
+                        priority: "Normal",
+                        // New Format for New Entry: just "Line: ..."
+                        remarks: `Line: ${newRemarkFragment}`, 
+                        entryDate: targetDate,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await collectionRef.add(payload);
+                    console.log("Synced: Created new record.");
+                }
+            } catch (e) {
+                console.error("Sync Error:", e);
+            }
+        }
+
         // --- 1. Data Save Function (using Local Storage) ---
-        function saveInvoiceData(formData) {
+        async function saveInvoiceData(formData) {
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             
             const todayISO = getTodayDate();
             
             // Logic to handle missing Stuffing Date
             const finalStuffingDate = formData.stuffingDate ? formData.stuffingDate : "Not Confirm";
+
+            // Preserve existing mail status if record exists
+            let currentMailStatus = 'No';
+            const existingRecord = records.find(r => r.bookingNo === formData.bookingNo);
+            if (existingRecord && existingRecord.mailStatus) {
+                currentMailStatus = existingRecord.mailStatus;
+            }
 
             const newData = {
                 saveDate: todayISO, 
@@ -676,6 +901,7 @@
                 cartonNos: formData.cartonNos,
                 stuffingDate: finalStuffingDate, // Updated logic
                 grossWeight: formData.grossWeight,
+                mailStatus: currentMailStatus // Default to No or preserve existing
             };
 
             const existingIndex = records.findIndex(r => r.bookingNo === newData.bookingNo);
@@ -687,6 +913,9 @@
             
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
             
+            // --- TRIGGER SYNC ---
+            await syncToFirestore(newData);
+
             loadAllData();
         }
 
@@ -698,13 +927,12 @@
                 return;
             }
 
-            // Updated Header: Replaced 'Invoice Date' with 'Stuffing Date'
-            const headers = ["Save Date", "Booking No", "Stuffing Date", "Containers x20/x40", "Shipping Line", "Country of Final Destination", "Location"];
+            // Updated Header
+            const headers = ["Save Date", "Booking No", "Stuffing Date", "Containers x20/x40", "Shipping Line", "Country of Final Destination", "Location", "Mail Sent"];
             
             let csvContent = headers.join(",") + "\n";
             
             records.forEach(record => {
-                // Using Stuffing Date for the CSV
                 const formattedStuffingDate = formatDate(record.stuffingDate || 'Not Confirm');
                 
                 const row = [
@@ -714,7 +942,8 @@
                     record.containers,
                     record.shippingLine,
                     record.finalDestination,
-                    record.location
+                    record.location,
+                    record.mailStatus || 'No'
                 ];
                 csvContent += row.map(e => `"${e}"`).join(",") + "\n";
             });
@@ -744,30 +973,40 @@
             records.forEach(record => {
                 const row = tbody.insertRow();
                 
-                // UPDATED TABLE LOGIC: 
-                // 1. Save Date Removed
-                // 2. Location moved to first
-                
-                // 1. Location (First)
+                // 0. Checkbox (First)
+                const selectCell = row.insertCell();
+                selectCell.classList.add('select-cell');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'record-select';
+                checkbox.value = record.bookingNo; // Use Booking No as ID
+                selectCell.appendChild(checkbox);
+
+                // 1. Mail Status (Moved here - Second)
+                const mailCell = row.insertCell();
+                mailCell.classList.add('mail-cell');
+                mailCell.textContent = record.mailStatus === 'Sent' ? 'Sent ✅' : '-';
+
+                // 2. Location (Third)
                 row.insertCell().textContent = record.location;
                 
-                // 2. Booking No
+                // 3. Booking No
                 row.insertCell().textContent = record.bookingNo;
                 
-                // 3. Stuffing Date
+                // 4. Stuffing Date
                 const sDate = record.stuffingDate || 'Not Confirm';
                 row.insertCell().textContent = formatDate(sDate);
                 
-                // 4. Containers
+                // 5. Containers
                 row.insertCell().textContent = record.containers;
                 
-                // 5. Shipping Line
+                // 6. Shipping Line
                 row.insertCell().textContent = record.shippingLine;
                 
-                // 6. Country of Final Destination
+                // 7. Country of Final Destination
                 row.insertCell().textContent = record.finalDestination;
 
-                // Action Cell
+                // Action Cell (Last)
                 const actionCell = row.insertCell();
                 actionCell.classList.add('action-cell');
                 
@@ -822,18 +1061,106 @@
             document.getElementById('packages').value = 500; 
             populateDatalist(); 
             loadAllData(); 
+            
+            // --- NEW: LISTENER FOR NOTIFICATION ---
+            if (db) {
+                const planningRef = db.collection('artifacts').doc(appId)
+                        .collection('public').doc('data')
+                        .collection('sales_records');
+
+                let isInitialLoad = true;
+
+                // Listen for added or modified docs
+                planningRef.orderBy('timestamp', 'desc').limit(1).onSnapshot(snapshot => {
+                    if (isInitialLoad) {
+                        isInitialLoad = false;
+                        return;
+                    }
+                    
+                    snapshot.docChanges().forEach(change => {
+                        // Trigger on Add or Modify (Merge)
+                        if (change.type === 'added' || change.type === 'modified') {
+                            const data = change.doc.data();
+                            showNotification(data);
+                        }
+                    });
+                }, error => {
+                    console.warn("Notification listener error (likely index missing, which is fine):", error);
+                });
+            }
         });
 
-        // Form Submission (Updated for Single Click Workflow)
-        document.getElementById('invoiceForm').addEventListener('submit', function (event) {
-            event.preventDefault(); 
+        // --- NEW: POPUP FUNCTIONS ---
+        function showNotification(data) {
+            // Parse Details
+            let size = "";
+            if(parseInt(data.container20) > 0) size = `${data.container20}x20`;
+            if(parseInt(data.container40) > 0) size += (size ? ", " : "") + `${data.container40}x40`;
+            if(parseInt(data.containerDbl20) > 0) size += (size ? ", " : "") + `${data.containerDbl20}xDbl20`;
             
+            // Extract Line from Remarks
+            let line = "Line ?";
+            if(data.remarks) {
+                // If merged, might be "Line: MSC 1x20, CMA 1x40"
+                // Just show the whole remark or truncate
+                line = data.remarks.length > 30 ? data.remarks.substring(0, 30) + "..." : data.remarks;
+            }
+
+            // Format Date
+            let sDate = data.stuffingDate;
+            if(sDate && sDate.includes('-')) {
+                const [y, m, d] = sDate.split('-');
+                sDate = `${d}-${m}-${y}`;
+            }
+
+            const msg = `New Planning: ${size} - ${data.customerName}<br><br>Details: ${line}<br>Stuffing Date: ${sDate}`;
+            
+            const popup = document.getElementById('notificationPopup');
+            document.getElementById('popupMessage').innerHTML = msg; // Use innerHTML for <br>
+            popup.style.display = 'block';
+        }
+
+        function closePopup() {
+            document.getElementById('notificationPopup').style.display = 'none';
+        }
+
+        // --- NEW: Function to Reset Form ---
+        function resetInvoiceForm() {
+            document.getElementById('invoiceForm').reset();
+            const todayISO = getTodayDate();
+            document.getElementById('invoiceDate').value = todayISO;
+            document.getElementById('invoiceNo').value = generateRandomInvoiceNo();
+            // Restore defaults that might be cleared by reset()
+            document.getElementById('initialCarriage').value = "Prepaid";
+            document.getElementById('portOfDischarge').value = "MUNDRA";
+            document.getElementById('countryOfOrigin').value = "INDIA";
+            document.getElementById('cartonNos').value = "EXP983";
+            document.getElementById('packages').value = 500;
+            // Clear location specifically to "Select Location"
+            document.getElementById('location').selectedIndex = 0;
+        }
+
+        // --- NEW: Unified Action Handler ---
+        function handleInvoiceAction(actionType) {
+            // 1. Check for SELECTED records first
+            const selectedCheckboxes = document.querySelectorAll('.record-select:checked');
+            
+            // --- ACTION: OPEN OUTLOOK ---
+            if (actionType === 'outlook') {
+                if (selectedCheckboxes.length > 0) {
+                    openOutlookMultiple(selectedCheckboxes);
+                } else {
+                    alert("कृपया ईमेल भेजने के लिए टेबल से कम से कम एक रिकॉर्ड चुनें। (Please select at least one record from the table.)");
+                }
+                return; // Stop here for Outlook
+            }
+
+            // 2. Standard Flow (Validation of Form Data) for PDF and WhatsApp
             document.querySelectorAll('#invoiceForm *').forEach(el => el.classList.remove('highlight-error'));
 
             let formIsValid = true;
             const formData = {}; 
             
-            // Collect ALL form data first (even non-required ones like optional stuffing date)
             const allInputs = document.querySelectorAll('#invoiceForm input, #invoiceForm select');
             allInputs.forEach(input => {
                 if (input.name) {
@@ -841,7 +1168,6 @@
                 }
             });
 
-            // Validate ONLY required fields
             const requiredFields = document.querySelectorAll('#invoiceForm [required]');
             requiredFields.forEach(field => {
                 const fieldValue = field.value.trim(); 
@@ -858,14 +1184,17 @@
             });
 
             if (!formIsValid) {
-                alert("Missing Entry");
+                alert("Missing Entry (or Select records from table for Bulk Email)");
                 return; 
             }
             
-            // --- If form is valid, continue with saving and display ---
+            // --- ALERT BEFORE ACTION ---
+            alert(`Container : ${formData.otherReference}\nLine : ${formData.buyer}`);
+
+            // --- FOR PDF/WHATSAPP: Save Data & Generate Invoice ---
             saveInvoiceData(formData); 
             
-            // --- Populate invoice fields for display ---
+            // Populate display
             document.getElementById('displayLocationHeader').textContent = formData.location;
             document.getElementById('displayInvoiceNo').textContent = `${formData.invoiceNo} | ${formatDate(formData.invoiceDate)}`;
             document.getElementById('displayOtherReference').textContent = formData.otherReference;
@@ -879,7 +1208,6 @@
             document.getElementById('displayCartonNos').textContent = formData.cartonNos;
             document.getElementById('displayLocation').textContent = formData.location; 
             
-            // Display 'Not Confirm' in Invoice view if empty
             const displaySDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : 'Not Confirm';
             document.getElementById('displayStuffingDate').textContent = displaySDate;
             
@@ -889,10 +1217,78 @@
             document.getElementById('invoice').style.display = 'block';
             document.getElementById('invoice').scrollIntoView({ behavior: 'smooth' });
 
+            // Trigger PDF Download Logic
             setTimeout(() => {
-                saveAsPDF(true); 
+                saveAsPDF(actionType === 'whatsapp'); 
             }, 500);
-        });
+        }
+
+        // --- NEW: Open Outlook Function (MULTIPLE Selected Records) ---
+        function openOutlookMultiple(checkboxes) {
+            const selectedBookingNos = Array.from(checkboxes).map(cb => cb.value);
+            // Get records from allRecords reference
+            const selectedRecords = allRecords.filter(r => selectedBookingNos.includes(r.bookingNo));
+            
+            if (selectedRecords.length === 0) return;
+
+            // 1. UPDATE MAIL STATUS
+            let recordsUpdated = false;
+            selectedBookingNos.forEach(bNo => {
+                const idx = allRecords.findIndex(r => r.bookingNo === bNo);
+                if (idx !== -1) {
+                    allRecords[idx].mailStatus = 'Sent';
+                    recordsUpdated = true;
+                }
+            });
+
+            if (recordsUpdated) {
+                // Save updated status to local storage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allRecords));
+                // Refresh table to show "Sent"
+                displayData(allRecords);
+                
+                // 2. AUTO-DESELECT - Since we refreshed table, checkboxes are re-rendered and unchecked by default. 
+                // But just in case logic changes, explicit uncheck:
+                document.querySelectorAll('.record-select').forEach(cb => cb.checked = false);
+            }
+
+            // 3. GENERATE EMAIL
+            const to = "Harpal.Singh@hindcarriers.com;rajesh.kumar@hindcarriers.com;Kilaraipur@hindcarriers.com";
+            const cc = "marketing.ludhiana@hindterminals.com;customerserviceludhiana@hindterminals.com";
+            
+            // UPDATED SUBJECT: List all selected booking numbers
+            const allBookingNos = selectedRecords.map(r => r.bookingNo).join(', ');
+            const subject = `Booking & Packing List , Booking No : ${allBookingNos}`;
+            
+            // Start of Body
+            let bodyContent = `Please find attached Booking\nand Packing List\n\n`;
+
+            selectedRecords.forEach(record => {
+                const sDate = record.stuffingDate ? formatDate(record.stuffingDate) : "Not Confirm";
+                
+                // Format per user request
+                bodyContent += `Location: ${record.location}\n`;
+                bodyContent += `---------------------------------------\n`;
+                bodyContent += `Booking No. : ${record.bookingNo}, \n`;
+                bodyContent += `Containers  : ${record.containers}\n`;
+                bodyContent += `Shipping Line:  ${record.shippingLine}.\n`;
+                bodyContent += `Country of Final Destination: :\n${record.finalDestination}.\n`; 
+                bodyContent += `Stuffing Date:  ${sDate}.\n`;
+                bodyContent += `---------------------------------------\n`;
+            });
+
+            const emailBody = `Dear HCPL Team,
+
+${bodyContent}
+
+You are requested to kindly
+arrange the movement and plan. 
+Deep Ji (Pinnacle), Please
+survey the containers urgently.`;
+
+            const mailtoLink = `mailto:${to}?cc=${cc}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+            window.location.href = mailtoLink;
+        }
 
         // --- UPDATED: WhatsApp Share Function ---
         function shareOnWhatsApp() {
@@ -934,8 +1330,29 @@
             const clonedTable = tableElement.cloneNode(true);
             clonedTable.id = 'dataTableClone';
             
-            clonedTable.querySelector('thead tr').lastElementChild.remove();
-            clonedTable.querySelectorAll('.action-cell').forEach(cell => cell.remove());
+            // Remove Action and Select columns from clone
+            const headerRow = clonedTable.querySelector('thead tr');
+            
+            // Adjust removal based on new order:
+            // 0: Select, 1: Mail, 2: Loc, 3: Booking, 4: Stuffing, 5: Cont, 6: Ship, 7: Dest, 8: Action
+            
+            // Remove First (Select)
+            headerRow.children[0].remove();
+            
+            // After Select removal, indices shift left by 1.
+            // New 0: Mail. We want to remove Mail too? Usually yes for image share.
+            // Remove New First (Mail)
+            headerRow.children[0].remove();
+            
+            // Remove Last (Action)
+            headerRow.children[headerRow.children.length - 1].remove();
+
+            // Body Rows
+            clonedTable.querySelectorAll('tbody tr').forEach(row => {
+                 row.children[0].remove(); // Select
+                 row.children[0].remove(); // Mail (became 0)
+                 row.children[row.children.length - 1].remove(); // Action
+            });
             
             container.innerHTML = `
                 <div id="bulkCaptureContent">
@@ -1052,6 +1469,9 @@
                         shareOnWhatsApp();
                     }, 1000);
                 }
+                
+                // --- RESET FORM AFTER SUCCESSFUL PDF ---
+                resetInvoiceForm();
 
             }).catch(error => {
                 console.error("PDF generation failed:", error);
