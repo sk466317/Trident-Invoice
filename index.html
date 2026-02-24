@@ -173,12 +173,12 @@
             }
             
             /* UPDATED INDICES FOR NEW COLUMN ORDER: 
-               1:Select, 2:Mail, 3:Location, 4:Booking, 5:Stuffing, 6:Cont, 7:Line, 8:Dest, 9:Action 
+               1:Select, 2:Mail, 3:EntryDate, 4:Location, 5:Booking, 6:Stuffing, 7:Cont, 8:Line, 9:Dest, 10:Action 
             */
-            #dataTable th:nth-child(5), /* Stuffing Date */
-            #dataTable td:nth-child(5), 
-            #dataTable th:nth-child(8), /* Country of Final Destination */
-            #dataTable td:nth-child(8) { 
+            #dataTable th:nth-child(6), /* Stuffing Date */
+            #dataTable td:nth-child(6), 
+            #dataTable th:nth-child(9), /* Country of Final Destination */
+            #dataTable td:nth-child(9) { 
                 display: none;
             }
         }
@@ -524,7 +524,7 @@
         <div class="action-group">
             <button type="button" id="btnPdfOnly" onclick="handleInvoiceAction('pdf')">Generate & Save PDF 📥</button>
             <button type="button" id="btnOutlook" onclick="handleInvoiceAction('outlook')">Open Outlook Email 📧</button>
-            <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Generate, Save & WhatsApp 🚀</button>
+            <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Send Whatsapp Msg 🚀</button>
         </div>
         
         <div class="button-grid">
@@ -1111,17 +1111,21 @@
             // 1. Check for SELECTED records first
             const selectedCheckboxes = document.querySelectorAll('.record-select:checked');
             
-            // --- ACTION: OPEN OUTLOOK ---
-            if (actionType === 'outlook') {
+            // --- ACTION: OPEN OUTLOOK OR SEND WHATSAPP ---
+            if (actionType === 'outlook' || actionType === 'whatsapp') {
                 if (selectedCheckboxes.length > 0) {
-                    openOutlookMultiple(selectedCheckboxes);
+                    if (actionType === 'outlook') {
+                        openOutlookMultiple(selectedCheckboxes);
+                    } else if (actionType === 'whatsapp') {
+                        sendWhatsappMultiple(selectedCheckboxes);
+                    }
                 } else {
-                    alert("कृपया ईमेल भेजने के लिए टेबल से कम से कम एक रिकॉर्ड चुनें। (Please select at least one record from the table.)");
+                    alert("Please select record to send msg (कृपया मैसेज भेजने के लिए टेबल से कम से कम एक रिकॉर्ड चुनें।)");
                 }
-                return; // Stop here for Outlook
+                return; // Stop here for Outlook and WhatsApp
             }
 
-            // 2. Standard Flow (Validation of Form Data) for PDF and WhatsApp
+            // 2. Standard Flow (Validation of Form Data) for PDF ONLY
             document.querySelectorAll('#invoiceForm *').forEach(el => el.classList.remove('highlight-error'));
 
             let formIsValid = true;
@@ -1155,7 +1159,7 @@
             });
 
             if (!formIsValid) {
-                alert("Missing Entry (or Select records from table for Bulk Email)");
+                alert("Missing Entry");
                 return; 
             }
             
@@ -1174,7 +1178,7 @@
                 return; // Stop if user cancels
             }
 
-            // --- FOR PDF/WHATSAPP: Save Data & Generate Invoice ---
+            // --- FOR PDF: Save Data & Generate Invoice ---
             saveInvoiceData(formData); 
             
             // Populate display
@@ -1202,7 +1206,7 @@
 
             // Trigger PDF Download Logic
             setTimeout(() => {
-                saveAsPDF(actionType === 'whatsapp'); 
+                saveAsPDF(false); 
             }, 500);
         }
 
@@ -1230,8 +1234,7 @@
                 // Refresh table to show "Sent"
                 displayData(allRecords);
                 
-                // 2. AUTO-DESELECT - Since we refreshed table, checkboxes are re-rendered and unchecked by default. 
-                // But just in case logic changes, explicit uncheck:
+                // 2. AUTO-DESELECT
                 document.querySelectorAll('.record-select').forEach(cb => cb.checked = false);
             }
 
@@ -1273,32 +1276,38 @@ survey the containers urgently.`;
             window.location.href = mailtoLink;
         }
 
-        // --- UPDATED: WhatsApp Share Function ---
-        function shareOnWhatsApp() {
-            const buyer = document.getElementById('buyer').value || '';
-            const containers = document.getElementById('otherReference').value || '';
-            const finalDestination = document.getElementById('finalDestination').value || '';
-            const location = document.getElementById('location').value || '';
-            const stuffingDate = document.getElementById('stuffingDate').value;
-            const bookingNo = document.getElementById('bookingNo').value || '';
-
-            // Handle date for WhatsApp message
-            const sDateMsg = stuffingDate ? formatDate(stuffingDate) : "Not Confirm";
-
-            const message = `*Dear HCPL Team*\n--------------------\n` +
-                `*Containers:* ${containers}\n` +
-                `*Booking No:* ${bookingNo}\n` +
-                `*Line:* ${buyer}\n` +	
-                `*Loading Location:* ${location}\n` +
-                `*Final Destination:* ${finalDestination}\n` +
-                `------------------\n` +
-                `*Stuffing Date:* ${sDateMsg}\n` +
-                `------------------\n` +
-                `*Thanks:*\n(Please arrange to Move the containers.)`;
+        // --- NEW: WhatsApp Multiple Function ---
+        function sendWhatsappMultiple(checkboxes) {
+            const selectedBookingNos = Array.from(checkboxes).map(cb => cb.value);
+            const selectedRecords = allRecords.filter(r => selectedBookingNos.includes(r.bookingNo));
             
+            if (selectedRecords.length === 0) return;
+
+            let message = `*Dear HCPL Team*\n\nPlease arrange to Move below Bookings :-\n`;
+
+            selectedRecords.forEach(record => {
+                const sDate = record.stuffingDate ? formatDate(record.stuffingDate) : "Not Confirm";
+
+                message += `--------------------\n`;
+                message += `*Loading Location:* ${record.location}\n`;
+                message += `*Containers:* ${record.containers}\n`;
+                message += `*Booking No:* ${record.bookingNo}\n`;
+                message += `*Line:* ${record.shippingLine}\n`;
+                message += `*Final Destination:* ${record.finalDestination}\n`;
+                message += `------------------\n`;
+                message += `*Stuffing Date:* ${sDate}\n`;
+            });
+
+            message += `------------------\n`;
+            message += `*Thanks:*\n*Customer Service HTPL*\n\n`;
+            message += `RIC : Pinnacle Team , Kindly arrange to survey the containers urgently.`;
+
             const encodedMessage = encodeURIComponent(message);
             const whatsappURL = `whatsapp://send?text=${encodedMessage}`;
             window.location.href = whatsappURL;
+            
+            // Deselect checkboxes after click
+            document.querySelectorAll('.record-select').forEach(cb => cb.checked = false);
         }
 
         function shareBulkTableDataAsImage() {
@@ -1322,11 +1331,10 @@ survey the containers urgently.`;
             // Remove First (Select)
             headerRow.children[0].remove();
             
-            // Remove Mail (was 1, now 0)
+            // After Select removal, indices shift left by 1.
+            // New 0: Mail. We want to remove Mail too? Usually yes for image share.
+            // Remove New First (Mail)
             headerRow.children[0].remove();
-            
-            // Remove Entry Date (was 2, now 0) ?? Usually Entry Date is good to keep in image report?
-            // User requested share report image. Let's keep Entry Date in image as it is useful.
             
             // Remove Last (Action)
             headerRow.children[headerRow.children.length - 1].remove();
@@ -1383,7 +1391,7 @@ survey the containers urgently.`;
                     });
                 }, 'image/png');
             } else {
-                alert("आपका ब्राउज़र सीधे इमेज शेयरिंग को सपोर्ट नहीं करता है। आपको मैन्युअल रूप से स्क्रीनशॉट लेना होगा। टेक्स्ट मैसेज के लिए OK दबाएँ।");
+                alert("आपका ब्राउज़र सीधे इमेज शेयरिंग को सपोर्ट গুরু नहीं करता है। आपको मैन्युअल रूप से स्क्रीनशॉट लेना होगा। टेक्स्ट मैसेज के लिए OK दबाएँ।");
                 const fallbackText = `*Full Container Report*\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}.\n\n(Please check the web application for details.)`;
                 window.location.href = `whatsapp://send?text=${encodeURIComponent(fallbackText)}`;
             }
@@ -1449,10 +1457,6 @@ survey the containers urgently.`;
                         const pdfUrl = URL.createObjectURL(pdfBlob);
                         window.open(pdfUrl, '_blank');
                     }
-                } else {
-                    setTimeout(() => {
-                        shareOnWhatsApp();
-                    }, 1000);
                 }
                 
                 // --- RESET FORM AFTER SUCCESSFUL PDF ---
