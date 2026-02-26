@@ -795,26 +795,24 @@
             }
         }
 
-        // --- FIXED: Send Telegram Notification Function (GET Request) ---
+        // --- UPDATED: Send Telegram Notification Function (GET Request with New Format) ---
         async function sendTelegramNotification(formData) {
             if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
 
             const sDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : "Not Confirm";
             
-            // Updated Telegram Message Format
+            // Updated Telegram Message Format with Booking No
             const message = `Dear HCPL Team\n\n` +
-                            `Please Move below ::- \n` +
+                            `Please Move below Booking,\n` +
                             `\n` +
-			     `\n` +
-                       		`⭐<b>Booking No::</b> ${formData.bookingNo}\n` +
-							`📍<b>Location::</b> ${formData.location}\n` +
+							`🧾<b>Booking No.:</b> ${formData.bookingNo}\n` +
+                            `📍<b>Location:</b> ${formData.location}\n` +
                             `⏱️<b>Stuffing Date:</b> ${sDate}\n` +
-                            `📦<b>Containers :: </b> ${formData.otherReference}\n` +
-                            `🚢<b>Shipping Line:: </b> ${formData.buyer}\n` +
-                            `🏷️<b>Country :: </b> ${formData.finalDestination}\n` +
-			     `\n` +
+                            `📦<b>Containers :</b> ${formData.otherReference}\n` +
+                            `🚢<b>Line:</b> ${formData.buyer}\n` +
+                            `🏷️<b>Country :</b> ${formData.finalDestination}\n` +
                             `\n` +
-                            `Kindly Arrange to get move\n` +
+                            `Kindly Arrange to get movement and plan\n` +
                             `Thanks\n` +
                             `Vikram Singh`;
 
@@ -831,7 +829,7 @@
             }
         }
 
-        // --- FIXED: Sync to Firestore Function (No Compound Index Issues) ---
+        // --- UPDATED: Sync to Firestore Function (Multiple Containers & Custom Remarks) ---
         async function syncToFirestore(record) {
             if (!db || !auth) return; 
             
@@ -841,20 +839,25 @@
                 try { await auth.signInAnonymously(); } catch(e){}
             }
 
+            // 1. Parse Multiple Containers (e.g. "1x20 2x40" -> c20=1, c40=2)
             let c20 = 0, c40 = 0;
             const containerStr = (record.containers || "").toLowerCase();
-            const match = containerStr.match(/(\d+)\s*[x*]\s*(20|40)/);
-            if (match) {
-                const count = parseInt(match[1]);
+            // Regex handles multiple matches globally 'g' flag
+            const regex = /(\d+)\s*[xX*]\s*(20|40)/g;
+            let match;
+            while ((match = regex.exec(containerStr)) !== null) {
+                const count = parseInt(match[1], 10);
                 const size = match[2];
-                if (size === '20') c20 = count;
-                if (size === '40') c40 = count;
+                if (size === '20') c20 += count;
+                if (size === '40') c40 += count;
             }
 
             const targetEntryDate = record.entryDate; 
             const targetCustomer = record.location;
             const formStuffingDate = record.stuffingDate !== 'Not Confirm' ? record.stuffingDate : "";
-            const newRemarkFragment = `${record.shippingLine} ${record.containers}`;
+            
+            // 2. UPDATED: Remarks me ab (Booking No, Line, Container) save hoga
+            const newRemarkFragment = `(${record.bookingNo},${record.shippingLine},${record.containers})`;
 
             const collectionRef = db.collection('artifacts').doc(appId)
                     .collection('public').doc('data')
@@ -885,9 +888,12 @@
                     
                     let newRemarks = existingRemarks;
                     if (newRemarks) {
-                        newRemarks += `, ${newRemarkFragment}`;
+                        // Prevent duplicate booking no logging in same record if clicked twice
+                        if (!newRemarks.includes(record.bookingNo)) {
+                            newRemarks += `, ${newRemarkFragment}`;
+                        }
                     } else {
-                        newRemarks = `Line: ${newRemarkFragment}`;
+                        newRemarks = `${newRemarkFragment}`;
                     }
 
                     await matchingDoc.ref.update({
@@ -907,7 +913,7 @@
                         containerDbl20: "0",
                         stuffingDate: formStuffingDate,
                         priority: "High", 
-                        remarks: `Line: ${newRemarkFragment}`, 
+                        remarks: `${newRemarkFragment}`, 
                         entryDate: targetEntryDate, 
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     };
@@ -1418,5 +1424,3 @@
     </script>
 </body>
 </html>
-
-
