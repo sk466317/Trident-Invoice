@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Invoice & Data Management</title>
+    
+    <!-- FIREBASE LIBRARIES (Added for Sync) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            padding: 10px;
+            background-color: white;
+        }
+        
+        /* Form Container - Denser Background */
+        .form-container {
+            max-width: 100%;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #dcdcdc; /* Darker Gray Base */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            background-color: #333333; /* Dark Gray */
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .form-container label {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: bold;
+            color: #333333;
+            font-size: 0.9rem;
+        }
+        
+        /* Input Boxes */
+        .form-container input[type="text"],
+        .form-container input[type="date"],
+        .form-container input[type="number"],
+        .form-container select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #999;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            background-color: #fafafa;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        
+        /* New Wrapper for Grid */
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        /* New Input Item Container - UPDATED FOR 3 COLUMNS */
+        .input-item {
+            /* (100% - 20px gap) / 3 items = approx 33.33% - 7px */
+            width: calc(33.333% - 7px);
+            box-sizing: border-box;
+        }
+
+        /* Highlight missing fields by filling the box with Light Pink/Red */
+        .form-container .highlight-error {
+            border: 2px solid red !important;
+            background-color: #ffe5e5 !important;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) !important;
+        }
+
+        /* --- UPDATED: Action Button Group --- */
+        .action-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .action-group button {
+            flex: 1; /* Grow to fill space */
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            min-width: 200px; /* Minimum width for buttons */
+            transition: opacity 0.3s;
+        }
+        
+        .action-group button:hover {
+            opacity: 0.9;
+        }
+
+        /* Specific Action Button Colors */
+        #btnWhatsApp {
+            background-color: #25D366; /* WhatsApp Green */
+        }
+        #btnPdfOnly {
+            background-color: #007bff; /* Primary Blue */
+        }
+        #btnOutlook {
+            background-color: #0078d4; /* Outlook Blue */
+        }
+
+        /* --- Custom Button Grid and Styles (2x2) --- */
+        .button-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .button-grid button {
+            width: calc(50% - 5px); /* Half width minus gap */
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 0;
+            transition: background-color 0.3s;
+        }
+
+        .button-grid button:hover {
+            opacity: 0.9;
+        }
+
+        /* Specific Utility Button Styles */
+        #downloadCsvBtn {
+            background-color: #f44336; /* Red for download/danger */
+        }
+        #deleteAllDataBtn {
+            background-color: #dc3545; /* Dark Red for delete */
+        }
+        #bulkShareBtn {
+            background-color: #00A86B; /* Darker Green for Bulk Share */
+        }
+        
+        /* --- MEDIA QUERY for Mobile View --- */
+        @media (max-width: 768px) {
+            .input-item {
+                width: calc(50% - 5px); /* Keep 2 columns on mobile */
+            }
+            .action-group {
+                flex-direction: column; /* Stack buttons on mobile */
+            }
+            .action-group button {
+                width: 100%;
+            }
+            
+            /* Hide less important columns on mobile */
+            #dataTable th:nth-child(6), 
+            #dataTable td:nth-child(6), 
+            #dataTable th:nth-child(9), 
+            #dataTable td:nth-child(9) { 
+                display: none;
+            }
+        }
+        
+        /* Extra small screens (Portrait Phones) */
+        @media (max-width: 480px) {
+            .input-item {
+                width: 100%; /* 1 column on very small screens */
+            }
+        }
+        
+        /* Data Table Styles */
+        #dataTableContainer {
+            max-height: 400px;
+            overflow-x: auto;
+            overflow-y: auto;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #e0e0e0;
+        }
+        #dataTable {
+            width: 100%;
+            min-width: 800px; /* Increased min-width to accommodate Edit column */
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        #dataTable th, #dataTable td {
+            border: 1px solid #ddd;
+            padding: 16px 8px; /* Double height */
+            text-align: left;
+        }
+        #dataTable th {
+            background-color: #4CAF50;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        #dataTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* NEW: Action column style */
+        .action-cell {
+            padding: 5px;
+            width: 1%;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        /* Select Checkbox Cell Style */
+        .select-cell {
+            text-align: center !important;
+            width: 1%;
+            vertical-align: middle;
+        }
+        .record-select {
+            transform: scale(1.5); /* Make checkbox bigger */
+            cursor: pointer;
+        }
+        /* Mail Status Cell Style */
+        .mail-cell {
+            text-align: center;
+            font-weight: bold;
+            color: #28a745;
+            white-space: nowrap;
+        }
+        
+        .edit-btn {
+            background-color: #ff9800; /* Orange for Edit */
+            padding: 6px 10px;
+            font-size: 0.8em;
+            width: 100%;
+            margin-bottom: 5px;
+            display: block;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        .edit-btn:hover {
+            background-color: #e68900;
+        }
+        /* New Delete Button Style */
+        .delete-btn {
+            background-color: #d32f2f; /* Red for Delete */
+            padding: 6px 10px;
+            font-size: 0.8em;
+            width: 100%;
+            display: block;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #b71c1c;
+        }
+        
+        /* Invisible container for Image generation */
+        #imageCaptureArea {
+            position: absolute;
+            left: -9999px;
+            background-color: white;
+            padding: 10px;
+            max-width: 1000px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+        /* Styling for bulk image capture (Cloned Table) */
+        #bulkCaptureContent {
+            padding: 5px;
+            border: 1px solid #000;
+        }
+        #bulkCaptureContent h3 {
+            background-color: #007bff;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            margin: 0 0 5px 0;
+            border-radius: 3px;
+            font-size: 1.1rem;
+        }
+        /* Ensure the captured table looks good */
+        #imageCaptureArea #dataTableClone {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #imageCaptureArea #dataTableClone th,
+        #imageCaptureArea #dataTableClone td {
+            border: 1px solid #ccc;
+            /* Extra height for image quality */
+            padding: 12px 5px;
+            text-align: left;
+            font-size: 0.8em;
+        }
+        #imageCaptureArea #dataTableClone th {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        
+        /* Invoice Styles */
+        .invoice {
+            max-width: 100%;
+            margin: 15px auto;
+            padding: 15px;
+            border: 3px solid black;
+            display: none;
+            box-sizing: border-box;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .invoice .header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            text-decoration: underline;
+            border: 2px solid #333333;
+            padding: 10px;
+            background-color: #f2f2f2;
+            color: #333333;
+        }
+        .invoice th, .invoice td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .invoice th {
+            background-color: #333333;
+            color: white;
+            font-weight: bold;
+        }
+        .invoice .section-title {
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            text-decoration: underline;
+            color: #333333;
+        }
+        .info-box {
+            border: 2px solid #333333;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .location-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: black;
+            padding: 5px 0;
+            text-align: left;
+            margin: 0;
+        }
+        .exporter-details p { margin: 5px 0; font-size: 0.9rem; }
+        .pdf-render-fix { width: 794px !important; max-width: 794px !important; margin: 0 auto; padding: 10px; box-shadow: none; }
+        
+        /* Modified Print Button Area */
+        .print-button button {
+            background-color: #555;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .print-button button:hover {
+            background-color: #333;
+        }
+
+        /* --- NOTIFICATION POPUP STYLES --- */
+        #notificationPopup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745; /* Green */
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            width: 320px;
+            border: 2px solid #fff;
+            animation: slideIn 0.5s ease-out;
+        }
+        #notificationPopup h4 { margin: 0 0 8px 0; font-size: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.5); padding-bottom: 5px; }
+        #notificationPopup p { margin: 0 0 15px 0; font-size: 0.95rem; line-height: 1.4; }
+        #notificationPopup button {
+            background: white;
+            color: #28a745;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            float: right;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #notificationPopup button:hover { background-color: #f0f0f0; }
+        @keyframes slideIn {
+            from { right: -350px; opacity: 0; }
+            to { right: 20px; opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NOTIFICATION POPUP -->
+    <div id="notificationPopup">
+        <h4>Received !!!</h4>
+        <p id="popupMessage">New Planning Details...</p>
+        <button onclick="closePopup()">OK</button>
+    </div>
+
+    <div class="form-container">
+        <h2>Generate Invoice</h2>
+        <form id="invoiceForm">
+            <!-- REARRANGED INPUT GROUP -->
+            <div class="input-group">
+                
+                <!-- 1. Invoice No -->
+                <div class="input-item">
+                    <label for="invoiceNo">Invoice No:</label>
+                    <input type="text" id="invoiceNo" name="invoiceNo" required>
+                </div>
+                
+                <!-- 2. Invoice Date -->
+                <div class="input-item">
+                    <label for="invoiceDate">Invoice Date:</label>
+                    <input type="date" id="invoiceDate" name="invoiceDate" required>
+                </div>
+
+                <!-- 3. Carriage -->
+                <div class="input-item">
+                    <label for="initialCarriage">Carriage :</label>
+                    <input type="text" id="initialCarriage" name="initialCarriage" value="Prepaid" required>
+                </div>
+
+                <!-- 4. Port of Loading -->
+                <div class="input-item">
+                    <label for="portOfDischarge">Port of Loading:</label>
+                    <input type="text" id="portOfDischarge" name="portOfDischarge" value="MUNDRA" required>
+                </div>
+
+                <!-- 5. Country of Origin -->
+                <div class="input-item">
+                    <label for="countryOfOrigin">Country of Origin:</label>
+                    <input type="text" id="countryOfOrigin" name="countryOfOrigin" value="INDIA" required>
+                </div>
+
+                <!-- 6. Packages -->
+                <div class="input-item">
+                    <label for="packages">Packages:</label>
+                    <input type="number" id="packages" name="packages" min="500" required>
+                </div>
+
+                <!-- 7. Carton Nos. -->
+                <div class="input-item">
+                    <label for="cartonNos">Carton Nos.:</label>
+                    <input type="text" id="cartonNos" name="cartonNos" value="EXP983" required>
+                </div>
+
+                <!-- 8. Booking No. -->
+                <div class="input-item">
+                    <label for="bookingNo">Booking No.:</label>
+                    <input type="text" id="bookingNo" name="bookingNo" required>
+                </div>
+
+                <!-- 9. Containers x20/x40 -->
+                <div class="input-item">
+                    <label for="otherReference">Containers x20/x40:</label>
+                    <input type="text" id="otherReference" name="otherReference" required>
+                </div>
+
+                <!-- 10. Stuffing Date -->
+                <div class="input-item">
+                    <label for="stuffingDate">Stuffing Date:</label>
+                    <input type="date" id="stuffingDate" name="stuffingDate">
+                </div>
+
+                <!-- 11. Location -->
+                <div class="input-item">
+                    <label for="location">Location:</label>
+                    <select id="location" name="location" required style="text-transform: uppercase;">
+                        <option value="" disabled selected>SELECT LOCATION</option>
+                        <option value="TRIDENT DHAULA">TRIDENT DHAULA</option>
+                        <option value="TRIDENT SANGHERA">TRIDENT SANGHERA</option>
+                        <option value="TARGET STORE">TARGET STORE</option>
+                        <option value="TRIDENT LOTUS">TRIDENT LOTUS</option>
+                    </select>
+                </div>
+
+                <!-- 12. Booking Party (NEW LIST BOX - Default Blank with fixed width type) -->
+                <div class="input-item">
+                    <label for="bookingParty">Booking Party:</label>
+                    <input type="text" list="bookingParties" id="bookingParty" name="bookingParty" required placeholder="Select Booking Party">
+                    <datalist id="bookingParties">
+                        <option value="Target Store"></option>
+                    </datalist>
+                </div>
+
+                <!-- 13. Shipping Line (NOW AS A LIST BOX) -->
+                <div class="input-item">
+                    <label for="buyer">Shipping Line:</label>
+                    <input type="text" list="shippingLines" id="buyer" name="buyer" required placeholder="Select Shipping Line" style="text-transform: uppercase;">
+                    <datalist id="shippingLines"></datalist>
+                </div>
+
+                <!-- 14. Country of Final Destination -->
+                <div class="input-item">
+                    <label for="finalDestination">Country of Final Destination:</label>
+                    <input type="text" list="destinationPorts" id="finalDestination" name="finalDestination" required placeholder="Select or type port name">
+                    <datalist id="destinationPorts"></datalist>
+                </div>
+
+                <!-- 15. Gross Weight (KGS) -->
+                <div class="input-item">
+                    <label for="grossWeight">Gross Weight (KGS):</label>
+                    <input type="number" id="grossWeight" name="grossWeight" step="0.01" required>
+                </div>
+
+            </div>
+        </form>
+        
+        <!-- Action Buttons -->
+        <div class="action-group">
+            <button type="button" id="btnPdfOnly" onclick="handleInvoiceAction('pdf')">Generate & Save PDF 📥</button>
+            <button type="button" id="btnOutlook" onclick="handleInvoiceAction('outlook')">Open Outlook Email 📧</button>
+            <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Send Whatsapp Msg 🚀</button>
+        </div>
+        
+        <div class="button-grid">
+            <button id="downloadCsvBtn" onclick="downloadData()">Download Data (CSV) 💾</button>
+            <button id="bulkShareBtn" onclick="shareBulkTableDataAsImage()">Share All Data (Image) 📸</button>
+            <button id="deleteAllDataBtn" onclick="deleteAllData()">Delete All Data 🗑️</button>
+            <button id="extraButton" style="background-color: #6c757d;">Extra Button</button>
+        </div>
+    </div>
+
+    <div id="dataTableContainer">
+        <h2>All Saved Invoice Records</h2>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Mail</th>
+                    <th>Entry Date</th>
+                    <th>Location</th>
+                    <th>Booking No</th>
+                    <th>Stuffing Date</th>
+                    <th>Containers x20/x40</th>
+                    <th>Shipping Line</th>
+                    <th>Country of Final Destination</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+    
+    <div id="imageCaptureArea">
+        </div>
+
+    <div class="invoice" id="invoice">
+        <div class="header">Packing List / Invoice</div>
+        
+        <div class="section-title">Exporter Details</div>
+        <div class="exporter-details">
+            <p class="location-header" id="displayLocationHeader"></p>
+            <p>E-212, Kitchlu Nagar, Ludhiana - 141004 (P.B.), India</p>
+            <p>Phone: +91-123-4567890 | Email: info@tridentltd.com</p>
+        </div>
+        
+        <div class="info-box">
+            <div class="section-title">Invoice Details</div>
+            <table>
+                <tr>
+                    <th>Invoice No. & Date</th>
+                    <td id="displayInvoiceNo"></td>
+                </tr>
+                <tr>
+                    <th>Containers</th>
+                    <td id="displayOtherReference"></td>
+                </tr>
+                <tr>
+                    <th>Shipping Line</th>
+                    <td id="displayBuyer"></td>
+                </tr>
+                <tr>
+                    <th>Booking No.</th>
+                    <td id="displayBookingNo"></td>
+                </tr>
+            </table>
+            
+            <div class="section-title">Shipment Details</div>
+            <table>
+                <tr>
+                    <th>Initial Carriage (Mode)</th>
+                    <td id="displayInitialCarriage"></td>
+                </tr>
+                <tr>
+                    <th>Port of Loading</th>
+                    <td id="displayPortOfDischarge"></td>
+                </tr>
+                <tr>
+                    <th>Country of Origin</th>
+                    <td id="displayCountryOfOrigin"></td>
+                </tr>
+                <tr>
+                    <th>Country of Final Destination</th>
+                    <td id="displayFinalDestination"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section-title">Product Details</div>
+        <table>
+            <tr>
+                <th>No. and Kind of Packages</th>
+                <th>Carton Nos.</th>
+                <th>Location</th>
+                <th>Stuffing Date</th>
+                <th>Gross Weight (KGS)</th>
+            </tr>
+            <tr>
+                <td id="displayPackages"></td>
+                <td id="displayCartonNos"></td>
+                <td id="displayLocation"></td>
+                <td id="displayStuffingDate"></td>
+                <td id="displayGrossWeight"></td>
+            </tr>
+        </table>
+        
+        <div class="footer">Signature & Date</div>
+        <div class="signature-box">
+            <p>Authorized Signature:</p>
+            <p>________________________</p>
+            <p>Date: <span id="displayDate"></span></p>
+        </div>
+
+        <div class="footer">
+            <p>This is Computer Generated Invoice, Signature Not Required</p>
+        </div>
+
+        <div class="print-button" id="printButtons">
+            <button onclick="window.print()">Print Invoice (Printer)</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        //  TELEGRAM BOT CONFIGURATION
+        // ==========================================
+        const TELEGRAM_BOT_TOKEN = "8616537455:AAE9X7flCY4WpNZm66KgwMyBqSIisMAVNMw"; 
+        const TELEGRAM_CHAT_ID = "870021557"; 
+
+        // ==========================================
+        //  FIREBASE INIT FOR SYNC
+        // ==========================================
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyDVBKC6l1iQ4DB83ppyBoyBvcgCU5gfi68",
+            authDomain: "mybillingapp-38c65.firebaseapp.com",
+            projectId: "mybillingapp-38c65",
+            storageBucket: "mybillingapp-38c65.firebasestorage.app",
+            messagingSenderId: "568659651466",
+            appId: "1:568659651466:web:9bfb8b7d4cf5af940f7673"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : "mybillingapp-38c65";
+
+        let db; 
+        let auth;
+
+        async function initFirebase() {
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                auth = firebase.auth();
+                
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await auth.signInWithCustomToken(__initial_auth_token);
+                    } else {
+                        await auth.signInAnonymously();
+                    }
+                    console.log("Firebase Auth OK");
+                } catch (e) {
+                    console.error("Firebase Auth Error", e);
+                }
+            }
+        }
+        
+        initFirebase();
+
+        const SALES_COLLECTION_PATH = ['artifacts', appId, 'public', 'data', 'sales_records']; 
+        const STORAGE_KEY = 'invoiceDataRecords';
+        let allRecords = []; 
+        
+        const MASTER_PORTS_LIST = [
+            "-", 
+            "ASHDOD, NON USA",
+            "BOSTON USA PORT",
+            "BUENAVENTURA- NON USA PORT",
+            "CHARLESTON USA PORT",
+            "CHATTOGRAM",
+            "CHITTAGONG NON USA PORT",
+            "COLOMBO, NON US PORT",
+            "DAMMAM SAUDI ARABIA",
+            "FELIXSTOWE, NON USA PORT",
+            "FOS-SUR-MER - NON USA PORT",
+            "GDYNIA NON USA PORT",
+            "GOTEBORG, NON USA PORT",
+            "HAMBURG, NON USA PORT",
+            "HOUSTON USA PORT",
+            "JACKSONVILLE",
+            "JACKSONVILLE USA PORT",
+            "JIANGXI, CHAINA",
+            "LE HAVRE NON USA PORT",
+            "LONG BEACH USA PORT",
+            "LOS ANGELES, CA",
+            "MELBOURNE",
+            "MOBILE USA PORT",
+            "NEW ORLEANS USA PORT",
+            "NEW YORK USA PORT",
+            "NORFOLK USA PORT",
+            "OAKLAND USA PORT",
+            "PARANAGUA NON USA PORT",
+            "PHILADELPHIA USA PORT",
+            "PORT EVERGLADES USA PORT",
+            "PORT LOUIS, MAURITIUS",
+            "ROTTERDAM NON USA PORT",
+            "SANSHAN, NON USA PORT",
+            "SANSHUI, FOSHAN, GUANGDONG, CHINA",
+            "SAVANNAH USA PORT",
+            "SEATTLE USA PORT",
+            "SINGAPORE NON USA PORT",
+            "TOKIYO"
+        ].sort((a, b) => { 
+            if (a === '-') return -1;
+            if (b === '-') return 1;
+            return a.localeCompare(b);
+        });
+
+        const SHIPPING_LINES_LIST = [
+            "ANL", "APL", "BAY LINE", "BILANDER", "CMA", "COSCO", "EFFICIENT", 
+            "EVERGREEN", "GOODRICH", "HAPAG", "KMTC", "MAERSK", "MAXICON", "MSC", 
+            "OMEGA", "ONE", "OOCL", "PAREKH", "RCL", "SEABRIDGE", "STAR/ZIM", 
+            "TS LINE", "UNIFEEDER", "WINASIA", "WINWIN"
+        ];
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            if (dateString === 'Not Confirm') return 'Not Confirm';
+            if (!dateString.includes('-')) return dateString;
+            
+            const parts = dateString.split('-');
+            if (parts.length !== 3) return dateString; 
+            
+            const [yyyy, mm, dd] = parts;
+            return `${dd}-${mm}-${yyyy}`;
+        }
+
+        function getTodayDate() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            let mm = today.getMonth() + 1;
+            let dd = today.getDate();
+            if (dd < 10) dd = '0' + dd;
+            if (mm < 10) mm = '0' + mm;
+            return yyyy + '-' + mm + '-' + dd; 
+        }
+
+        function populateDatalist() {
+            const datalist = document.getElementById('destinationPorts');
+            datalist.innerHTML = ''; 
+            MASTER_PORTS_LIST.forEach(port => {
+                const option = document.createElement('option');
+                option.value = port;
+                datalist.appendChild(option);
+            });
+
+            // Populate Shipping Lines List Box
+            const lineDatalist = document.getElementById('shippingLines');
+            if (lineDatalist) {
+                lineDatalist.innerHTML = '';
+                SHIPPING_LINES_LIST.forEach(line => {
+                    const option = document.createElement('option');
+                    option.value = line;
+                    lineDatalist.appendChild(option);
+                });
+            }
+        }
+        
+        function deleteAllData() {
+            const confirmation = confirm("WARNING: This will permanently delete ALL saved invoice data from your browser's local storage. Are you sure you want to proceed?");
+            if (confirmation) {
+                localStorage.removeItem(STORAGE_KEY);
+                alert("🗑️ All saved data has been successfully deleted.");
+                loadAllData();
+            }
+        }
+
+        function deleteRecord(bookingNo) {
+            if (confirm(`Are you sure you want to delete the record with Booking No: ${bookingNo}?`)) {
+                let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const updatedRecords = records.filter(record => record.bookingNo !== bookingNo);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRecords));
+                alert("Record deleted successfully! 🗑️");
+                loadAllData();
+            }
+        }
+
+        // --- Send Telegram Notification Function ---
+        async function sendTelegramNotification(formData) {
+            if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+
+            const sDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : "Not Confirm";
+            
+            const message = `Dear HCPL Team\n\n` +
+                            `Please Move below Booking,\n` +
+                            `-----------------------------------------\n` +
+                            `📍<b>Location:</b> ${formData.location}\n` +
+                            `⏱️<b>Stuffing Date:</b> ${sDate}\n` +
+                            `-----------------------------------------\n` +
+                            `🧾<b>Booking No.:</b> ${formData.bookingNo}\n` +
+                            `🏢<b>Booking Party:</b> ${formData.bookingParty || 'Target Store'}\n` +
+                            `📦<b>Containers :</b> ${formData.otherReference}\n` +
+                            `🚢<b>Line:</b> ${formData.buyer}\n` +
+                            `🏷️<b>Country :</b> ${formData.finalDestination}\n` +
+                            `-----------------------------------------\n` +
+                            `Kindly Arrange to get movement and plan\n` +
+                            `Thanks\n` +
+                            `Vikram Singh`;
+
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`;
+            
+            try {
+                const response = await fetch(url, { method: 'GET' });
+                if (!response.ok) {
+                    console.error("Telegram Failed");
+                }
+            } catch (error) {
+                console.error("Telegram Error:", error);
+            }
+        }
+
+        // --- Sync to Firestore Function ---
+        async function syncToFirestore(record) {
+            if (!db || !auth) return; 
+            
+            if (!auth.currentUser) {
+                console.log("Waiting for auth to complete...");
+                try { await auth.signInAnonymously(); } catch(e){}
+            }
+
+            // Parse Multiple Containers
+            let c20 = 0, c40 = 0;
+            const containerStr = (record.containers || "").toLowerCase();
+            const regex = /(\d+)\s*[xX*]\s*(20|40)/g;
+            let match;
+            while ((match = regex.exec(containerStr)) !== null) {
+                const count = parseInt(match[1], 10);
+                const size = match[2];
+                if (size === '20') c20 += count;
+                if (size === '40') c40 += count;
+            }
+
+            const targetEntryDate = record.entryDate; 
+            const targetCustomer = record.location;
+            const formStuffingDate = record.stuffingDate !== 'Not Confirm' ? record.stuffingDate : "";
+            
+            const newRemarkFragment = `(${record.bookingNo},${record.shippingLine},${(record.containers || '').toUpperCase()},${record.bookingParty || ''})`;
+
+            const collectionRef = db.collection('artifacts').doc(appId)
+                    .collection('public').doc('data')
+                    .collection('sales_records');
+
+            try {
+                const querySnapshot = await collectionRef.get();
+
+                let matchingDoc = null;
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.customerName === targetCustomer && 
+                        data.entryDate === targetEntryDate && 
+                        data.stuffingDate === formStuffingDate) {
+                        matchingDoc = doc;
+                    }
+                });
+
+                if (matchingDoc) {
+                    const data = matchingDoc.data();
+                    const existing20 = parseInt(data.container20) || 0;
+                    const existing40 = parseInt(data.container40) || 0;
+                    const existingRemarks = data.remarks || "";
+
+                    const newTotal20 = existing20 + c20;
+                    const newTotal40 = existing40 + c40;
+                    
+                    let newRemarks = existingRemarks;
+                    if (newRemarks) {
+                        if (!newRemarks.includes(record.bookingNo)) {
+                            newRemarks += `, ${newRemarkFragment}`;
+                        }
+                    } else {
+                        newRemarks = `${newRemarkFragment}`;
+                    }
+
+                    await matchingDoc.ref.update({
+                        container20: newTotal20.toString(),
+                        container40: newTotal40.toString(),
+                        remarks: newRemarks,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log("Firebase Sync: Merged into existing record.");
+                } else {
+                    const payload = {
+                        salesPerson: "Kunal Sahi",
+                        customerName: targetCustomer,
+                        location: targetCustomer,
+                        container20: c20.toString(),
+                        container40: c40.toString(),
+                        containerDbl20: "0",
+                        stuffingDate: formStuffingDate,
+                        priority: "High", 
+                        remarks: `${newRemarkFragment}`, 
+                        entryDate: targetEntryDate, 
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await collectionRef.add(payload);
+                    console.log("Firebase Sync: Created new record.");
+                }
+            } catch (e) {
+                console.error("Firebase Sync Error:", e);
+            }
+        }
+
+        async function saveInvoiceData(formData) {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const todayISO = getTodayDate(); 
+            const finalStuffingDate = formData.stuffingDate ? formData.stuffingDate : "Not Confirm";
+
+            let currentMailStatus = 'No';
+            let currentEntryDate = todayISO;
+
+            const existingRecord = records.find(r => r.bookingNo === formData.bookingNo);
+            if (existingRecord) {
+                if (existingRecord.mailStatus) currentMailStatus = existingRecord.mailStatus;
+                if (existingRecord.entryDate) currentEntryDate = existingRecord.entryDate;
+            }
+
+            const newData = {
+                saveDate: todayISO, 
+                bookingNo: formData.bookingNo,
+                invoiceDate: formData.invoiceDate,
+                containers: formData.otherReference,
+                shippingLine: formData.buyer,
+                finalDestination: formData.finalDestination,
+                location: formData.location, 
+                invoiceNo: formData.invoiceNo,
+                initialCarriage: formData.initialCarriage,
+                portOfDischarge: formData.portOfDischarge,
+                countryOfOrigin: formData.countryOfOrigin,
+                packages: formData.packages,
+                cartonNos: formData.cartonNos,
+                stuffingDate: finalStuffingDate, 
+                grossWeight: formData.grossWeight,
+                bookingParty: formData.bookingParty, 
+                mailStatus: currentMailStatus,
+                entryDate: currentEntryDate 
+            };
+
+            const existingIndex = records.findIndex(r => r.bookingNo === newData.bookingNo);
+            if (existingIndex > -1) {
+                records[existingIndex] = newData;
+            } else {
+                records.push(newData);
+            }
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            
+            await syncToFirestore(newData);
+            await sendTelegramNotification(formData);
+
+            loadAllData();
+        }
+
+        function downloadData() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            if (records.length === 0) {
+                alert("No data available to download.");
+                return;
+            }
+
+            const headers = ["Entry Date", "Booking No", "Stuffing Date", "Containers x20/x40", "Shipping Line", "Country of Final Destination", "Location", "Mail Sent"];
+            
+            let csvContent = headers.join(",") + "\n";
+            
+            records.forEach(record => {
+                const formattedStuffingDate = formatDate(record.stuffingDate || 'Not Confirm');
+                const formattedEntryDate = formatDate(record.entryDate); 
+                
+                const row = [
+                    formattedEntryDate,
+                    record.bookingNo,
+                    formattedStuffingDate,
+                    record.containers,
+                    record.shippingLine,
+                    record.finalDestination,
+                    record.location,
+                    record.mailStatus || 'No'
+                ];
+                csvContent += row.map(e => `"${e}"`).join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Invoice_Data_${getTodayDate()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function loadAllData() {
+            allRecords = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            displayData(allRecords); 
+        }
+
+        function displayData(records) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = ''; 
+
+            records.forEach(record => {
+                const row = tbody.insertRow();
+                
+                const selectCell = row.insertCell();
+                selectCell.classList.add('select-cell');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'record-select';
+                checkbox.value = record.bookingNo; 
+                selectCell.appendChild(checkbox);
+
+                const mailCell = row.insertCell();
+                mailCell.classList.add('mail-cell');
+                mailCell.textContent = record.mailStatus === 'Sent' ? 'Sent ✅' : '-';
+
+                row.insertCell().textContent = formatDate(record.entryDate);
+                row.insertCell().textContent = record.location;
+                row.insertCell().textContent = record.bookingNo;
+                
+                const sDate = record.stuffingDate || 'Not Confirm';
+                row.insertCell().textContent = formatDate(sDate);
+                row.insertCell().textContent = record.containers;
+                row.insertCell().textContent = record.shippingLine;
+                row.insertCell().textContent = record.finalDestination;
+
+                const actionCell = row.insertCell();
+                actionCell.classList.add('action-cell');
+                
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit/Load 📝';
+                editButton.classList.add('edit-btn');
+                editButton.onclick = () => loadDataToForm(record); 
+                actionCell.appendChild(editButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete ❌';
+                deleteButton.classList.add('delete-btn');
+                deleteButton.onclick = () => deleteRecord(record.bookingNo);
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        function loadDataToForm(record) {
+            document.getElementById('invoiceNo').value = record.invoiceNo || '';
+            document.getElementById('invoiceDate').value = record.invoiceDate || '';
+            document.getElementById('otherReference').value = record.containers || '';
+            document.getElementById('buyer').value = record.shippingLine || '';
+            document.getElementById('bookingNo').value = record.bookingNo || '';
+            document.getElementById('initialCarriage').value = record.initialCarriage || 'Prepaid';
+            document.getElementById('portOfDischarge').value = record.portOfDischarge || 'MUNDRA';
+            document.getElementById('countryOfOrigin').value = record.countryOfOrigin || 'INDIA';
+            document.getElementById('packages').value = record.packages || '';
+            document.getElementById('cartonNos').value = record.cartonNos || 'EXP983';
+            document.getElementById('grossWeight').value = record.grossWeight || '';
+            document.getElementById('bookingParty').value = record.bookingParty || '';
+            
+            const savedStuffingDate = record.stuffingDate;
+            if (savedStuffingDate === 'Not Confirm') {
+                document.getElementById('stuffingDate').value = '';
+            } else {
+                document.getElementById('stuffingDate').value = savedStuffingDate || '';
+            }
+            
+            document.getElementById('finalDestination').value = record.finalDestination || '';
+            document.getElementById('location').value = record.location || '';
+            
+            alert(`Data for Booking No. ${record.bookingNo} loaded into the form for editing/resending.`);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const todayISO = getTodayDate();
+            document.getElementById('invoiceDate').value = todayISO;
+            document.getElementById('invoiceNo').value = generateRandomInvoiceNo();
+            document.getElementById('packages').value = 500; 
+            populateDatalist(); 
+            loadAllData(); 
+            
+            // AUTO-CALCULATE GROSS WEIGHT LOGIC
+            document.getElementById('otherReference').addEventListener('input', function(e) {
+                let containerStr = e.target.value.toLowerCase();
+                let c20 = 0, c40 = 0;
+                const regex = /(\d+)\s*[xX*]\s*(20|40)/g;
+                let match;
+                while ((match = regex.exec(containerStr)) !== null) {
+                    const count = parseInt(match[1], 10);
+                    const size = match[2];
+                    if (size === '20') c20 += count;
+                    if (size === '40') c40 += count;
+                }
+                // If any valid container format is matched, update weight
+                if (c20 > 0 || c40 > 0) {
+                    document.getElementById('grossWeight').value = (c20 * 3500) + (c40 * 7900);
+                }
+            });
+
+            // "ENTER" KEY NAVIGATION BEHAVIOR
+            document.getElementById('invoiceForm').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    // Get all focusable elements inside the form
+                    const formElements = Array.from(this.elements).filter(el => !el.disabled && el.tabIndex !== -1);
+                    const index = formElements.indexOf(e.target);
+                    
+                    if (index > -1 && index < formElements.length - 1) {
+                        e.preventDefault(); // Prevent accidental form submission
+                        formElements[index + 1].focus(); // Move to the next input
+                    }
+                }
+            });
+        });
+
+        function resetInvoiceForm() {
+            document.getElementById('invoiceForm').reset();
+            const todayISO = getTodayDate();
+            document.getElementById('invoiceDate').value = todayISO;
+            document.getElementById('invoiceNo').value = generateRandomInvoiceNo();
+            document.getElementById('initialCarriage').value = "Prepaid";
+            document.getElementById('portOfDischarge').value = "MUNDRA";
+            document.getElementById('countryOfOrigin').value = "INDIA";
+            document.getElementById('cartonNos').value = "EXP983";
+            document.getElementById('packages').value = 500;
+            document.getElementById('bookingParty').value = ""; // Default Blank
+            document.getElementById('location').selectedIndex = 0;
+        }
+
+        function handleInvoiceAction(actionType) {
+            const selectedCheckboxes = document.querySelectorAll('.record-select:checked');
+            
+            if (actionType === 'outlook' || actionType === 'whatsapp') {
+                if (selectedCheckboxes.length > 0) {
+                    if (actionType === 'outlook') {
+                        openOutlookMultiple(selectedCheckboxes);
+                    } else if (actionType === 'whatsapp') {
+                        sendWhatsappMultiple(selectedCheckboxes);
+                    }
+                } else {
+                    alert("Please select record to send msg (कृपया मैसेज भेजने के लिए टेबल से कम से कम एक रिकॉर्ड चुनें।)");
+                }
+                return; 
+            }
+
+            document.querySelectorAll('#invoiceForm *').forEach(el => el.classList.remove('highlight-error'));
+
+            let formIsValid = true;
+            const formData = {}; 
+            
+            const allInputs = document.querySelectorAll('#invoiceForm input, #invoiceForm select');
+            allInputs.forEach(input => {
+                if (input.name) {
+                    formData[input.name] = input.value.trim();
+                }
+            });
+
+            if(formData.location) formData.location = formData.location.toUpperCase();
+            if(formData.buyer) formData.buyer = formData.buyer.toUpperCase(); // Force uppercase for shipping line
+
+            const requiredFields = document.querySelectorAll('#invoiceForm [required]');
+            requiredFields.forEach(field => {
+                const fieldValue = field.value.trim(); 
+                if (!fieldValue || (field.id === 'finalDestination' && !fieldValue)) {
+                    field.classList.add('highlight-error');
+                    formIsValid = false;
+                }
+                if (field.id === 'packages' && parseInt(field.value) < 500) {
+                    field.classList.add('highlight-error');
+                    formIsValid = false;
+                }
+            });
+
+            if (!formIsValid) {
+                alert("Missing Entry");
+                return; 
+            }
+            
+            const sDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : "Not Confirm";
+            
+            const confirmMsg = 
+                `Popup Notification\n` +
+                `Location: ${formData.location}\n` +
+                `Shipping Line: ${formData.buyer}\n` +
+                `Container: ${formData.otherReference}\n` +
+                `Stuffing Date: ${sDate}\n\n` +
+                `Save Data? (OK = Yes, Cancel = No)`;
+
+            if (!confirm(confirmMsg)) {
+                return; 
+            }
+
+            saveInvoiceData(formData); 
+            
+            document.getElementById('displayLocationHeader').textContent = formData.location;
+            document.getElementById('displayInvoiceNo').textContent = `${formData.invoiceNo} | ${formatDate(formData.invoiceDate)}`;
+            document.getElementById('displayOtherReference').textContent = formData.otherReference;
+            document.getElementById('displayBuyer').textContent = formData.buyer;
+            document.getElementById('displayBookingNo').textContent = formData.bookingNo;
+            document.getElementById('displayInitialCarriage').textContent = formData.initialCarriage;
+            document.getElementById('displayPortOfDischarge').textContent = formData.portOfDischarge;
+            document.getElementById('displayCountryOfOrigin').textContent = formData.countryOfOrigin;
+            document.getElementById('displayFinalDestination').textContent = formData.finalDestination; 
+            document.getElementById('displayPackages').textContent = formData.packages;
+            document.getElementById('displayCartonNos').textContent = formData.cartonNos;
+            document.getElementById('displayLocation').textContent = formData.location; 
+            
+            const displaySDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : 'Not Confirm';
+            document.getElementById('displayStuffingDate').textContent = displaySDate;
+            
+            document.getElementById('displayGrossWeight').textContent = formData.grossWeight;
+            document.getElementById('displayDate').textContent = formatDate(formData.invoiceDate);
+
+            document.getElementById('invoice').style.display = 'block';
+            document.getElementById('invoice').scrollIntoView({ behavior: 'smooth' });
+
+            setTimeout(() => {
+                saveAsPDF(false); 
+            }, 500);
+        }
+
+        function openOutlookMultiple(checkboxes) {
+            const selectedBookingNos = Array.from(checkboxes).map(cb => cb.value);
+            const selectedRecords = allRecords.filter(r => selectedBookingNos.includes(r.bookingNo));
+            if (selectedRecords.length === 0) return;
+
+            let recordsUpdated = false;
+            selectedBookingNos.forEach(bNo => {
+                const idx = allRecords.findIndex(r => r.bookingNo === bNo);
+                if (idx !== -1) {
+                    allRecords[idx].mailStatus = 'Sent';
+                    recordsUpdated = true;
+                }
+            });
+
+            if (recordsUpdated) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allRecords));
+                displayData(allRecords);
+                document.querySelectorAll('.record-select').forEach(cb => cb.checked = false);
+            }
+
+            const to = "Harpal.Singh@hindcarriers.com;rajesh.kumar@hindcarriers.com;Kilaraipur@hindcarriers.com";
+            const cc = "marketing.ludhiana@hindterminals.com;customerserviceludhiana@hindterminals.com";
+            const allBookingNos = selectedRecords.map(r => r.bookingNo).join(', ');
+            const subject = `Booking & Packing List , Booking No : ${allBookingNos}`;
+            
+            let bodyContent = `Please find attached Booking\nand Packing List\n\n`;
+
+            selectedRecords.forEach(record => {
+                const sDate = record.stuffingDate ? formatDate(record.stuffingDate) : "Not Confirm";
+                bodyContent += `Location: ${record.location}\n`;
+                bodyContent += `---------------------------------------\n`;
+                bodyContent += `Booking No. : ${record.bookingNo}, \n`;
+                bodyContent += `Booking Party: ${record.bookingParty || 'Target Store'}\n`;
+                bodyContent += `Containers  : ${record.containers}\n`;
+                bodyContent += `Shipping Line:  ${record.shippingLine}.\n`;
+                bodyContent += `Country of Final Destination: :\n${record.finalDestination}.\n`; 
+                bodyContent += `Stuffing Date:  ${sDate}.\n`;
+                bodyContent += `---------------------------------------\n`;
+            });
+
+            const emailBody = `Dear HCPL Team,\n\n${bodyContent}\nYou are requested to kindly\narrange the movement and plan. \nDeep Ji (Pinnacle), Please\nsurvey the containers urgently.`;
+
+            const mailtoLink = `mailto:${to}?cc=${cc}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+            window.location.href = mailtoLink;
+        }
+
+        function sendWhatsappMultiple(checkboxes) {
+            const selectedBookingNos = Array.from(checkboxes).map(cb => cb.value);
+            const selectedRecords = allRecords.filter(r => selectedBookingNos.includes(r.bookingNo));
+            if (selectedRecords.length === 0) return;
+
+            let message = `*Dear HCPL Team*\n\nPlease arrange to Move below Bookings :-\n`;
+
+            selectedRecords.forEach(record => {
+                const sDate = record.stuffingDate ? formatDate(record.stuffingDate) : "Not Confirm";
+                message += `--------------------\n`;
+                message += `*Loading Location:* ${record.location}\n`;
+                message += `*Containers:* ${record.containers}\n`;
+                message += `*Booking No:* ${record.bookingNo}\n`;
+                message += `*Booking Party:* ${record.bookingParty || 'Target Store'}\n`;
+                message += `*Line:* ${record.shippingLine}\n`;
+                message += `*Final Destination:* ${record.finalDestination}\n`;
+                message += `------------------\n`;
+                message += `*Stuffing Date:* ${sDate}\n`;
+            });
+
+            message += `------------------\n`;
+            message += `*Thanks:*\n*Customer Service HTPL*\n\n`;
+            message += `RIC : Pinnacle Team , Kindly arrange to survey the containers urgently.`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappURL = `whatsapp://send?text=${encodedMessage}`;
+            window.location.href = whatsappURL;
+            
+            document.querySelectorAll('.record-select').forEach(cb => cb.checked = false);
+        }
+
+        function shareBulkTableDataAsImage() {
+            const tableElement = document.getElementById('dataTable');
+            const container = document.getElementById('imageCaptureArea');
+            if (tableElement.querySelector('tbody').rows.length === 0) {
+                alert("Table में कोई डेटा नहीं है जिसे शेयर किया जा सके।");
+                return;
+            }
+
+            const clonedTable = tableElement.cloneNode(true);
+            clonedTable.id = 'dataTableClone';
+            const headerRow = clonedTable.querySelector('thead tr');
+            headerRow.children[0].remove();
+            headerRow.children[0].remove();
+            headerRow.children[headerRow.children.length - 1].remove();
+
+            clonedTable.querySelectorAll('tbody tr').forEach(row => {
+                 row.children[0].remove(); 
+                 row.children[0].remove(); 
+                 row.children[row.children.length - 1].remove(); 
+            });
+            
+            container.innerHTML = `
+                <div id="bulkCaptureContent">
+                    <h3>All Container Records (${getTodayDate()})</h3>
+                    ${clonedTable.outerHTML}
+                    <p style="text-align: right; font-size: 0.7em; margin-top: 5px;">*Generated by App.</p>
+                </div>
+            `;
+            
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.display = 'block';
+
+            html2canvas(document.getElementById('bulkCaptureContent'), {
+                scale: 2, 
+                logging: false, 
+                useCORS: true,
+                backgroundColor: 'white'
+            }).then(canvas => {
+                container.style.display = 'none';
+                handleImageSharing(canvas, "All_Container_Records.png");
+            }).catch(error => {
+                console.error("Bulk Image generation failed:", error);
+                container.style.display = 'none';
+                alert("इमेज बनाने में समस्या आई।");
+            });
+        }
+        
+        function handleImageSharing(canvas, filename) { 
+            const imgData = canvas.toDataURL('image/png'); 
+            if (navigator.share) {
+                canvas.toBlob((blob) => {
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    navigator.share({
+                        files: [file],
+                        title: 'All Container Records',
+                        text: `*Full Container Report* \n\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}`,
+                    }).then(() => console.log('Image shared successfully')).catch(error => {
+                        console.error('Error sharing file:', error);
+                        alert('Image sharing failed. Falling back to simple text message.');
+                        const fallbackText = `*Full Container Report*\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}.\n\n(Please check the web application for details.)`;
+                        window.location.href = `whatsapp://send?text=${encodeURIComponent(fallbackText)}`;
+                    });
+                }, 'image/png');
+            } else {
+                alert("आपका ब्राउज़र सीधे इमेज शेयरिंग को सपोर्ट नहीं करता है। आपको मैन्युअल रूप से स्क्रीनशॉट लेना होगा। टेक्स्ट मैसेज के लिए OK दबाएँ।");
+                const fallbackText = `*Full Container Report*\nTotal Records: ${document.getElementById('dataTable').querySelector('tbody').rows.length}.\n\n(Please check the web application for details.)`;
+                window.location.href = `whatsapp://send?text=${encodeURIComponent(fallbackText)}`;
+            }
+        }
+
+        function generateRandomInvoiceNo() { return 'INV' + Math.floor(Math.random() * 1000000); }
+
+        function saveAsPDF(autoTriggerWhatsApp = false) {
+            const invoiceElement = document.getElementById('invoice');
+            const printButtons = document.getElementById('printButtons');
+            const bookingNo = document.getElementById('displayBookingNo').textContent || document.getElementById('bookingNo').value; 
+            const filename = `${bookingNo}_Invoice.pdf`; 
+
+            if (!bookingNo) {
+                        alert("Booking No Missing");
+                        return;
+            }
+
+            printButtons.style.display = 'none';
+            invoiceElement.classList.add('pdf-render-fix'); 
+
+            const pdfWidthMM = 210; 
+            const pdfHeightMM = 297; 
+            
+            html2canvas(invoiceElement, {
+                scale: 3, 
+                logging: false, 
+                useCORS: true, 
+            }).then((canvas) => {
+                invoiceElement.classList.remove('pdf-render-fix');
+                
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const margin = 10;
+                const contentWidthMM = pdfWidthMM - (margin * 2); 
+                const imgHeightMM = (canvas.height * contentWidthMM) / canvas.width; 
+                const pageContentHeight = pdfHeightMM - (margin * 2);
+                
+                let heightLeft = imgHeightMM;
+                let position = margin; 
+
+                doc.addImage(imgData, 'JPEG', margin, position, contentWidthMM, imgHeightMM);
+                heightLeft -= pageContentHeight; 
+
+                while (heightLeft > 0) {
+                    position = (pageContentHeight * -1); 
+                    doc.addPage();
+                    doc.addImage(imgData, 'JPEG', margin, position, contentWidthMM, imgHeightMM);
+                    heightLeft -= pageContentHeight;
+                }
+
+                doc.save(filename); 
+                printButtons.style.display = 'block';
+
+                if (!autoTriggerWhatsApp) {
+                    const userConfirmed = confirm(`✅ Invoice Saved in Download Folder.\n\nFile: ${filename}\n\n Do you Want to Open Invoice Yes or No?`);
+                    if (userConfirmed) {
+                        const pdfBlob = doc.output('blob');
+                        const pdfUrl = URL.createObjectURL(pdfBlob);
+                        window.open(pdfUrl, '_blank');
+                    }
+                }
+                
+                resetInvoiceForm();
+
+            }).catch(error => {
+                console.error("PDF generation failed:", error);
+                alert("PDF बनाने में समस्या आई। कृपया पुनः प्रयास करें।");
+                invoiceElement.classList.remove('pdf-render-fix');
+                printButtons.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
