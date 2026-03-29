@@ -1369,7 +1369,6 @@
             document.getElementById('displayDate').textContent = formatDate(formData.invoiceDate);
 
             document.getElementById('invoice').style.display = 'block';
-            document.getElementById('invoice').scrollIntoView({ behavior: 'smooth' });
 
             setTimeout(() => {
                 saveAsPDF(false); 
@@ -1575,15 +1574,6 @@
                 doc.save(filename); 
                 printButtons.style.display = 'block';
 
-                if (!autoTriggerWhatsApp) {
-                    const userConfirmed = confirm(`✅ Invoice Saved in Download Folder.\n\nFile: ${filename}\n\n Do you Want to Open Invoice Yes or No?`);
-                    if (userConfirmed) {
-                        const pdfBlob = doc.output('blob');
-                        const pdfUrl = URL.createObjectURL(pdfBlob);
-                        window.open(pdfUrl, '_blank');
-                    }
-                }
-                
                 resetInvoiceForm();
 
             }).catch(error => {
