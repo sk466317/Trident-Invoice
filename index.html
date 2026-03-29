@@ -17,36 +17,57 @@
         /* General Styles */
         body {
             font-family: Arial, sans-serif;
-            margin: 10px;
-            padding: 10px;
-            background-color: white;
+            margin: 0;
+            padding: 8px;
+            background-color: #f4f6f8;
+            color: #222;
         }
         
         /* Form Container - Denser Background */
         .form-container {
-            max-width: 100%;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            background-color: #dcdcdc; /* Darker Gray Base */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 14px;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            background-color: #eef1f4;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         }
         .form-container h2 {
             text-align: center;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
             background-color: #333333; /* Dark Gray */
             color: white;
-            padding: 10px;
+            padding: 8px 10px;
             border-radius: 5px;
+            letter-spacing: 0.02em;
+        }
+        .top-toolbar {
+            position: sticky;
+            top: 8px;
+            z-index: 100;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px;
+            background-color: rgba(238, 241, 244, 0.96);
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+        .form-container > .action-group,
+        .form-container > .button-grid {
+            display: none;
         }
         .form-container label {
             display: block;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
             font-weight: bold;
             color: #333333;
-            font-size: 0.9rem;
+            font-size: 0.78rem;
         }
         
         /* Input Boxes */
@@ -55,29 +76,30 @@
         .form-container input[type="number"],
         .form-container select {
             width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #999;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            background-color: #fafafa;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 7px 8px;
+            margin-bottom: 0;
+            border: 1px solid #b8c1cb;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background-color: #ffffff;
+            box-shadow: none;
             box-sizing: border-box;
             transition: border-color 0.3s, background-color 0.3s;
+            min-height: 34px;
         }
         
         /* New Wrapper for Grid */
         .input-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: start;
         }
         
-        /* New Input Item Container - UPDATED FOR 3 COLUMNS */
         .input-item {
-            /* (100% - 20px gap) / 3 items = approx 33.33% - 7px */
-            width: calc(33.333% - 7px);
+            width: 100%;
+            min-width: 0;
             box-sizing: border-box;
         }
 
@@ -92,22 +114,24 @@
         .action-group {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 20px;
-            margin-bottom: 20px;
+            gap: 6px;
+            margin: 0;
         }
 
         .action-group button {
-            flex: 1; /* Grow to fill space */
-            padding: 12px;
+            flex: 0 0 auto;
+            width: auto;
+            padding: 7px 10px;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.8rem;
             font-weight: bold;
-            min-width: 200px; /* Minimum width for buttons */
+            min-width: auto;
+            line-height: 1.1;
             transition: opacity 0.3s;
+            white-space: nowrap;
         }
         
         .action-group button:hover {
@@ -129,20 +153,21 @@
         .button-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 6px;
+            margin: 0;
         }
 
         .button-grid button {
-            width: calc(50% - 5px); /* Half width minus gap */
-            padding: 12px;
+            width: auto;
+            padding: 7px 10px;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.8rem;
             margin-top: 0;
             transition: background-color 0.3s;
+            white-space: nowrap;
         }
 
         .button-grid button:hover {
@@ -162,14 +187,12 @@
         
         /* --- MEDIA QUERY for Mobile View --- */
         @media (max-width: 768px) {
-            .input-item {
-                width: calc(50% - 5px); /* Keep 2 columns on mobile */
+            .input-group {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            .action-group {
-                flex-direction: column; /* Stack buttons on mobile */
-            }
-            .action-group button {
-                width: 100%;
+            .top-toolbar {
+                top: 4px;
+                padding: 6px;
             }
             
             /* Hide less important columns on mobile */
@@ -183,8 +206,8 @@
         
         /* Extra small screens (Portrait Phones) */
         @media (max-width: 480px) {
-            .input-item {
-                width: 100%; /* 1 column on very small screens */
+            .input-group {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -193,22 +216,32 @@
             max-height: 400px;
             overflow-x: auto;
             overflow-y: auto;
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            background-color: #e0e0e0;
+            margin-top: 12px;
+            padding: 6px;
+            border: 1px solid #bfd7c4;
+            border-radius: 8px;
+            background-color: #eef8f1;
+        }
+        #dataTableContainer h2 {
+            margin: 0 0 6px 0;
+            padding: 6px 8px;
+            font-size: 1rem;
+            text-align: left;
+            border-radius: 6px;
+            background-color: #2f6f4f;
+            color: #ffffff;
         }
         #dataTable {
             width: 100%;
             min-width: 800px; /* Increased min-width to accommodate Edit column */
             border-collapse: collapse;
-            font-size: 0.9em;
+            font-size: 0.78em;
         }
         #dataTable th, #dataTable td {
             border: 1px solid #ddd;
-            padding: 16px 8px; /* Double height */
+            padding: 5px 6px;
             text-align: left;
+            line-height: 1.15;
         }
         #dataTable th {
             background-color: #4CAF50;
@@ -223,7 +256,7 @@
 
         /* NEW: Action column style */
         .action-cell {
-            padding: 5px;
+            padding: 3px;
             width: 1%;
             white-space: nowrap;
             vertical-align: middle;
@@ -235,7 +268,7 @@
             vertical-align: middle;
         }
         .record-select {
-            transform: scale(1.5); /* Make checkbox bigger */
+            transform: scale(1.05);
             cursor: pointer;
         }
         /* Mail Status Cell Style */
@@ -248,10 +281,10 @@
         
         .edit-btn {
             background-color: #ff9800; /* Orange for Edit */
-            padding: 6px 10px;
-            font-size: 0.8em;
+            padding: 4px 7px;
+            font-size: 0.75em;
             width: 100%;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             display: block;
             border: none;
             border-radius: 4px;
@@ -264,8 +297,8 @@
         /* New Delete Button Style */
         .delete-btn {
             background-color: #d32f2f; /* Red for Delete */
-            padding: 6px 10px;
-            font-size: 0.8em;
+            padding: 4px 7px;
+            font-size: 0.75em;
             width: 100%;
             display: block;
             border: none;
@@ -322,8 +355,8 @@
         /* Invoice Styles */
         .invoice {
             max-width: 100%;
-            margin: 15px auto;
-            padding: 15px;
+            margin: 12px auto;
+            padding: 12px;
             border: 3px solid black;
             display: none;
             box-sizing: border-box;
@@ -394,25 +427,25 @@
         #notificationPopup {
             display: none;
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 12px;
+            right: 12px;
             background-color: #28a745; /* Green */
             color: white;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 14px;
+            border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             z-index: 9999;
-            width: 320px;
+            width: 280px;
             border: 2px solid #fff;
             animation: slideIn 0.5s ease-out;
         }
-        #notificationPopup h4 { margin: 0 0 8px 0; font-size: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.5); padding-bottom: 5px; }
-        #notificationPopup p { margin: 0 0 15px 0; font-size: 0.95rem; line-height: 1.4; }
+        #notificationPopup h4 { margin: 0 0 6px 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.5); padding-bottom: 4px; }
+        #notificationPopup p { margin: 0 0 10px 0; font-size: 0.85rem; line-height: 1.3; }
         #notificationPopup button {
             background: white;
             color: #28a745;
             border: none;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
@@ -422,7 +455,7 @@
         #notificationPopup button:hover { background-color: #f0f0f0; }
         @keyframes slideIn {
             from { right: -350px; opacity: 0; }
-            to { right: 20px; opacity: 1; }
+            to { right: 12px; opacity: 1; }
         }
     </style>
 </head>
@@ -437,6 +470,20 @@
 
     <div class="form-container">
         <h2>Generate Invoice</h2>
+        <div class="top-toolbar">
+            <div class="action-group">
+                <button type="button" id="btnPdfOnly" onclick="handleInvoiceAction('pdf')">Generate & Save PDF</button>
+                <button type="button" id="btnOutlook" onclick="handleInvoiceAction('outlook')">Open Outlook Email</button>
+                <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Send WhatsApp Msg</button>
+            </div>
+ 
+            <div class="button-grid">
+                <button id="downloadCsvBtn" onclick="downloadData()">Download Data (CSV)</button>
+                <button id="bulkShareBtn" onclick="shareBulkTableDataAsImage()">Share All Data (Image)</button>
+                <button id="deleteAllDataBtn" onclick="deleteAllData()">Delete All Data</button>
+                <button id="extraButton" style="background-color: #6c757d;">Extra Button</button>
+            </div>
+        </div>
         <form id="invoiceForm">
             <!-- REARRANGED INPUT GROUP -->
             <div class="input-group">
@@ -547,15 +594,15 @@
         
         <!-- Action Buttons -->
         <div class="action-group">
-            <button type="button" id="btnPdfOnly" onclick="handleInvoiceAction('pdf')">Generate & Save PDF 📥</button>
-            <button type="button" id="btnOutlook" onclick="handleInvoiceAction('outlook')">Open Outlook Email 📧</button>
-            <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Send Whatsapp Msg 🚀</button>
+            <button type="button" id="btnPdfOnly" onclick="handleInvoiceAction('pdf')">Generate & Save PDF</button>
+            <button type="button" id="btnOutlook" onclick="handleInvoiceAction('outlook')">Open Outlook Email</button>
+            <button type="button" id="btnWhatsApp" onclick="handleInvoiceAction('whatsapp')">Send WhatsApp Msg</button>
         </div>
         
         <div class="button-grid">
-            <button id="downloadCsvBtn" onclick="downloadData()">Download Data (CSV) 💾</button>
-            <button id="bulkShareBtn" onclick="shareBulkTableDataAsImage()">Share All Data (Image) 📸</button>
-            <button id="deleteAllDataBtn" onclick="deleteAllData()">Delete All Data 🗑️</button>
+            <button id="downloadCsvBtn" onclick="downloadData()">Download Data (CSV)</button>
+            <button id="bulkShareBtn" onclick="shareBulkTableDataAsImage()">Share All Data (Image)</button>
+            <button id="deleteAllDataBtn" onclick="deleteAllData()">Delete All Data</button>
             <button id="extraButton" style="background-color: #6c757d;">Extra Button</button>
         </div>
     </div>
@@ -793,6 +840,40 @@
             return yyyy + '-' + mm + '-' + dd; 
         }
 
+        function getTomorrowDate() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const yyyy = tomorrow.getFullYear();
+            let mm = tomorrow.getMonth() + 1;
+            let dd = tomorrow.getDate();
+            if (dd < 10) dd = '0' + dd;
+            if (mm < 10) mm = '0' + mm;
+            return yyyy + '-' + mm + '-' + dd;
+        }
+
+        function getShippingLineFromBookingNo(bookingNo) {
+            const normalizedBookingNo = (bookingNo || '').trim().toUpperCase();
+            if (!normalizedBookingNo) return '';
+
+            if (normalizedBookingNo.startsWith('EID') || normalizedBookingNo.startsWith('CEI0')) return 'CMA CGM';
+            if (normalizedBookingNo.startsWith('363ILU') || normalizedBookingNo.startsWith('EBKG')) return 'MSC LINE';
+            if (normalizedBookingNo.startsWith('LUHG')) return 'ONE LINE';
+            if (normalizedBookingNo.startsWith('ACB')) return 'ANL';
+            if (normalizedBookingNo.startsWith('COAU')) return 'COSCO LINE';
+
+            return '';
+        }
+
+        function applyShippingLineByBookingNo() {
+            const bookingNoInput = document.getElementById('bookingNo');
+            const shippingLineInput = document.getElementById('buyer');
+            const matchedShippingLine = getShippingLineFromBookingNo(bookingNoInput.value);
+
+            if (matchedShippingLine) {
+                shippingLineInput.value = matchedShippingLine;
+            }
+        }
+
         function populateDatalist() {
             const datalist = document.getElementById('destinationPorts');
             datalist.innerHTML = ''; 
@@ -962,6 +1043,7 @@
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             const todayISO = getTodayDate(); 
             const finalStuffingDate = formData.stuffingDate ? formData.stuffingDate : "Not Confirm";
+            const savedAtISO = new Date().toISOString();
 
             let currentMailStatus = 'No';
             let currentEntryDate = todayISO;
@@ -973,6 +1055,7 @@
             }
 
             const newData = {
+                savedAt: savedAtISO,
                 saveDate: todayISO, 
                 bookingNo: formData.bookingNo,
                 invoiceDate: formData.invoiceDate,
@@ -1050,6 +1133,18 @@
 
         function loadAllData() {
             allRecords = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            allRecords.sort((a, b) => {
+                const aTime = a.savedAt ? new Date(a.savedAt).getTime() : 0;
+                const bTime = b.savedAt ? new Date(b.savedAt).getTime() : 0;
+
+                if (bTime !== aTime) {
+                    return bTime - aTime;
+                }
+
+                const aDate = a.saveDate || a.entryDate || '';
+                const bDate = b.saveDate || b.entryDate || '';
+                return bDate.localeCompare(aDate);
+            });
             displayData(allRecords); 
         }
 
@@ -1122,6 +1217,7 @@
             
             document.getElementById('finalDestination').value = record.finalDestination || '';
             document.getElementById('location').value = record.location || '';
+            applyShippingLineByBookingNo();
             
             alert(`Data for Booking No. ${record.bookingNo} loaded into the form for editing/resending.`);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1129,11 +1225,14 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             const todayISO = getTodayDate();
+            const tomorrowISO = getTomorrowDate();
             document.getElementById('invoiceDate').value = todayISO;
+            document.getElementById('stuffingDate').value = tomorrowISO;
             document.getElementById('invoiceNo').value = generateRandomInvoiceNo();
             document.getElementById('packages').value = 500; 
             populateDatalist(); 
             loadAllData(); 
+            document.getElementById('bookingNo').addEventListener('input', applyShippingLineByBookingNo);
             
             // AUTO-CALCULATE GROSS WEIGHT LOGIC
             document.getElementById('otherReference').addEventListener('input', function(e) {
@@ -1171,7 +1270,9 @@
         function resetInvoiceForm() {
             document.getElementById('invoiceForm').reset();
             const todayISO = getTodayDate();
+            const tomorrowISO = getTomorrowDate();
             document.getElementById('invoiceDate').value = todayISO;
+            document.getElementById('stuffingDate').value = tomorrowISO;
             document.getElementById('invoiceNo').value = generateRandomInvoiceNo();
             document.getElementById('initialCarriage').value = "Prepaid";
             document.getElementById('portOfDischarge').value = "MUNDRA";
@@ -1179,6 +1280,7 @@
             document.getElementById('cartonNos').value = "EXP983";
             document.getElementById('packages').value = 500;
             document.getElementById('bookingParty').value = ""; // Default Blank
+            document.getElementById('buyer').value = "";
             document.getElementById('location').selectedIndex = 0;
         }
 
@@ -1374,9 +1476,9 @@
             
             container.innerHTML = `
                 <div id="bulkCaptureContent">
-                    <h3>All Container Records (${getTodayDate()})</h3>
+                    <h3>Trident Planning (${getTodayDate()})</h3>
                     ${clonedTable.outerHTML}
-                    <p style="text-align: right; font-size: 0.7em; margin-top: 5px;">*Generated by App.</p>
+                    <p style="text-align: right; font-size: 0.7em; margin-top: 5px;">*Kindy Cross Check twice before excute movement from concern person.</p>
                 </div>
             `;
             
