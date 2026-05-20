@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,6 +104,57 @@
             box-sizing: border-box;
         }
 
+        .stuffing-split-panel {
+            grid-column: 1 / -1;
+            padding: 8px;
+            border: 1px solid #c9d6e2;
+            border-radius: 6px;
+            background-color: #f7fafc;
+        }
+
+        .stuffing-split-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .stuffing-split-toolbar label {
+            margin-bottom: 0;
+        }
+
+        #addStuffingSplitBtn {
+            width: auto;
+            padding: 5px 9px;
+            border: none;
+            border-radius: 4px;
+            background-color: #0f766e;
+            color: #ffffff;
+            font-size: 0.76rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .stuffing-split-row {
+            display: grid;
+            grid-template-columns: minmax(140px, 180px) minmax(160px, 1fr) auto;
+            gap: 6px;
+            align-items: center;
+            margin-top: 6px;
+        }
+
+        .remove-stuffing-split-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            background-color: #b91c1c;
+            color: #ffffff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
         /* Highlight missing fields by filling the box with Light Pink/Red */
         .form-container .highlight-error {
             border: 2px solid red !important;
@@ -190,6 +242,9 @@
             .input-group {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+            .stuffing-split-row {
+                grid-template-columns: 1fr 1fr auto;
+            }
             .top-toolbar {
                 top: 4px;
                 padding: 6px;
@@ -208,6 +263,12 @@
         @media (max-width: 480px) {
             .input-group {
                 grid-template-columns: 1fr;
+            }
+            .stuffing-split-row {
+                grid-template-columns: 1fr;
+            }
+            .remove-stuffing-split-btn {
+                width: 100%;
             }
         }
         
@@ -548,6 +609,14 @@
                     <input type="date" id="stuffingDate" name="stuffingDate">
                 </div>
 
+                <div class="stuffing-split-panel">
+                    <div class="stuffing-split-toolbar">
+                        <label>Stuffing Date Split:</label>
+                        <button type="button" id="addStuffingSplitBtn">+ Add Date</button>
+                    </div>
+                    <div id="stuffingSplitRows"></div>
+                </div>
+
                 <!-- 11. Location -->
                 <div class="input-item">
                     <label for="location">Location:</label>
@@ -830,6 +899,201 @@
             return `${dd}-${mm}-${yyyy}`;
         }
 
+        function parseContainerCounts(containerStr) {
+            let c20 = 0, c40 = 0;
+            const regex = /(\d+)\s*[xX*]\s*(20|40)/g;
+            let match;
+
+            while ((match = regex.exec((containerStr || '').toLowerCase())) !== null) {
+                const count = parseInt(match[1], 10);
+                const size = match[2];
+                if (size === '20') c20 += count;
+                if (size === '40') c40 += count;
+            }
+
+            return { c20, c40 };
+        }
+
+        function containerCountsToText(counts) {
+            const parts = [];
+            if (counts.c20 > 0) parts.push(`${counts.c20}x20`);
+            if (counts.c40 > 0) parts.push(`${counts.c40}x40`);
+            return parts.join(' + ');
+        }
+
+        function normalizeStuffingPlanEntries(entries, fallbackDate, fallbackContainers) {
+            if (Array.isArray(entries) && entries.length > 0) {
+                const normalizedEntries = entries
+                    .map(entry => ({
+                        date: entry.date && entry.date !== 'Not Confirm' ? entry.date : '',
+                        containers: (entry.containers || '').trim()
+                    }))
+                    .filter(entry => entry.date || entry.containers);
+
+                if (normalizedEntries.length > 0) return normalizedEntries;
+            }
+
+            return [{
+                date: fallbackDate && fallbackDate !== 'Not Confirm' ? fallbackDate : '',
+                containers: (fallbackContainers || '').trim()
+            }];
+        }
+
+        function getRecordStuffingPlanEntries(record) {
+            return normalizeStuffingPlanEntries(
+                record.stuffingDateEntries,
+                record.stuffingDate,
+                record.containers
+            );
+        }
+
+        function formatStuffingPlanEntries(entries, showContainersForSingle = false) {
+            const normalizedEntries = normalizeStuffingPlanEntries(entries, '', '');
+            return normalizedEntries.map(entry => {
+                const dateText = formatDate(entry.date || 'Not Confirm');
+                const containerText = (entry.containers || '').toUpperCase();
+                if (containerText && (showContainersForSingle || normalizedEntries.length > 1)) {
+                    return `${dateText} (${containerText})`;
+                }
+                return dateText;
+            }).join(', ');
+        }
+
+        function formatRecordStuffingPlan(record, showContainersForSingle = false) {
+            return formatStuffingPlanEntries(getRecordStuffingPlanEntries(record), showContainersForSingle);
+        }
+
+        function clearStuffingSplitRows() {
+            const wrapper = document.getElementById('stuffingSplitRows');
+            if (wrapper) wrapper.innerHTML = '';
+        }
+
+        function addStuffingSplitRow(dateValue = '', containersValue = '') {
+            const wrapper = document.getElementById('stuffingSplitRows');
+            if (!wrapper) return;
+
+            const row = document.createElement('div');
+            row.className = 'stuffing-split-row';
+
+            const dateInput = document.createElement('input');
+            dateInput.type = 'date';
+            dateInput.className = 'stuffing-split-date';
+            dateInput.value = dateValue || '';
+
+            const containerInput = document.createElement('input');
+            containerInput.type = 'text';
+            containerInput.className = 'stuffing-split-containers';
+            containerInput.placeholder = '2x40';
+            containerInput.value = containersValue || '';
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'remove-stuffing-split-btn';
+            removeButton.textContent = 'X';
+            removeButton.addEventListener('click', () => row.remove());
+
+            row.appendChild(dateInput);
+            row.appendChild(containerInput);
+            row.appendChild(removeButton);
+            wrapper.appendChild(row);
+        }
+
+        function getFormStuffingSplitRows() {
+            return Array.from(document.querySelectorAll('.stuffing-split-row')).map(row => ({
+                row,
+                dateInput: row.querySelector('.stuffing-split-date'),
+                containerInput: row.querySelector('.stuffing-split-containers'),
+                date: (row.querySelector('.stuffing-split-date')?.value || '').trim(),
+                containers: (row.querySelector('.stuffing-split-containers')?.value || '').trim()
+            }));
+        }
+
+        function buildStuffingPlanFromForm(formData) {
+            const splitRows = getFormStuffingSplitRows();
+            splitRows.forEach(item => {
+                item.dateInput?.classList.remove('highlight-error');
+                item.containerInput?.classList.remove('highlight-error');
+            });
+
+            const usedRows = splitRows.filter(item => item.date || item.containers);
+            if (usedRows.length === 0) {
+                return {
+                    ok: true,
+                    entries: normalizeStuffingPlanEntries([], formData.stuffingDate, formData.otherReference)
+                };
+            }
+
+            let hasError = false;
+            const splitTotals = { c20: 0, c40: 0 };
+            const entries = usedRows.map(item => {
+                const counts = parseContainerCounts(item.containers);
+
+                if (!item.date) {
+                    item.dateInput?.classList.add('highlight-error');
+                    hasError = true;
+                }
+
+                if (!item.containers || (counts.c20 === 0 && counts.c40 === 0)) {
+                    item.containerInput?.classList.add('highlight-error');
+                    hasError = true;
+                }
+
+                splitTotals.c20 += counts.c20;
+                splitTotals.c40 += counts.c40;
+
+                return {
+                    date: item.date,
+                    containers: item.containers
+                };
+            });
+
+            const totalCounts = parseContainerCounts(formData.otherReference);
+            const hasMainContainerCount = totalCounts.c20 > 0 || totalCounts.c40 > 0;
+            const totalsMatch = totalCounts.c20 === splitTotals.c20 && totalCounts.c40 === splitTotals.c40;
+
+            if (hasMainContainerCount && !totalsMatch) {
+                usedRows.forEach(item => item.containerInput?.classList.add('highlight-error'));
+                return {
+                    ok: false,
+                    message: `Split container total (${containerCountsToText(splitTotals) || '0'}) must match Containers x20/x40 (${containerCountsToText(totalCounts)}).`
+                };
+            }
+
+            if (hasError) {
+                return {
+                    ok: false,
+                    message: 'Please fill date and valid containers in every Stuffing Date Split row.'
+                };
+            }
+
+            return { ok: true, entries };
+        }
+
+        function groupStuffingEntriesByDate(entries) {
+            const grouped = new Map();
+
+            entries.forEach(entry => {
+                const dateKey = entry.date || '';
+                const counts = parseContainerCounts(entry.containers);
+                if (counts.c20 === 0 && counts.c40 === 0) return;
+
+                if (!grouped.has(dateKey)) {
+                    grouped.set(dateKey, { date: dateKey, c20: 0, c40: 0 });
+                }
+
+                const group = grouped.get(dateKey);
+                group.c20 += counts.c20;
+                group.c40 += counts.c40;
+            });
+
+            return Array.from(grouped.values()).map(group => ({
+                date: group.date,
+                containers: containerCountsToText(group),
+                c20: group.c20,
+                c40: group.c40
+            }));
+        }
+
         function getTodayDate() {
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -918,7 +1182,9 @@
         async function sendTelegramNotification(formData) {
             if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
 
-            const sDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : "Not Confirm";
+            const sDate = formData.stuffingDateEntries
+                ? formatStuffingPlanEntries(formData.stuffingDateEntries)
+                : (formData.stuffingDate ? formatDate(formData.stuffingDate) : "Not Confirm");
             
             const message = `Dear HCPL Team\n\n` +
                             `Please Move below Booking,\n` +
@@ -957,23 +1223,14 @@
                 try { await auth.signInAnonymously(); } catch(e){}
             }
 
-            // Parse Multiple Containers
-            let c20 = 0, c40 = 0;
-            const containerStr = (record.containers || "").toLowerCase();
-            const regex = /(\d+)\s*[xX*]\s*(20|40)/g;
-            let match;
-            while ((match = regex.exec(containerStr)) !== null) {
-                const count = parseInt(match[1], 10);
-                const size = match[2];
-                if (size === '20') c20 += count;
-                if (size === '40') c40 += count;
-            }
-
             const targetEntryDate = record.entryDate; 
             const targetCustomer = record.location;
-            const formStuffingDate = record.stuffingDate !== 'Not Confirm' ? record.stuffingDate : "";
-            
-            const newRemarkFragment = `(${record.bookingNo},${record.shippingLine},${(record.containers || '').toUpperCase()},${record.bookingParty || ''})`;
+            const stuffingPlanEntries = groupStuffingEntriesByDate(getRecordStuffingPlanEntries(record));
+
+            if (stuffingPlanEntries.length === 0) {
+                console.warn("Firebase Sync: No valid container split found.");
+                return;
+            }
 
             const collectionRef = db.collection('artifacts').doc(appId)
                     .collection('public').doc('data')
@@ -982,57 +1239,63 @@
             try {
                 const querySnapshot = await collectionRef.get();
 
-                let matchingDoc = null;
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.customerName === targetCustomer && 
-                        data.entryDate === targetEntryDate && 
-                        data.stuffingDate === formStuffingDate) {
-                        matchingDoc = doc;
-                    }
-                });
+                for (const planEntry of stuffingPlanEntries) {
+                    const formStuffingDate = planEntry.date || "";
+                    const newRemarkFragment = `(${record.bookingNo},${record.shippingLine},${(planEntry.containers || '').toUpperCase()},${record.bookingParty || ''})`;
 
-                if (matchingDoc) {
-                    const data = matchingDoc.data();
-                    const existing20 = parseInt(data.container20) || 0;
-                    const existing40 = parseInt(data.container40) || 0;
-                    const existingRemarks = data.remarks || "";
-
-                    const newTotal20 = existing20 + c20;
-                    const newTotal40 = existing40 + c40;
-                    
-                    let newRemarks = existingRemarks;
-                    if (newRemarks) {
-                        if (!newRemarks.includes(record.bookingNo)) {
-                            newRemarks += `, ${newRemarkFragment}`;
+                    let matchingDoc = null;
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.customerName === targetCustomer && 
+                            data.entryDate === targetEntryDate && 
+                            data.stuffingDate === formStuffingDate) {
+                            matchingDoc = doc;
                         }
-                    } else {
-                        newRemarks = `${newRemarkFragment}`;
-                    }
-
-                    await matchingDoc.ref.update({
-                        container20: newTotal20.toString(),
-                        container40: newTotal40.toString(),
-                        remarks: newRemarks,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    console.log("Firebase Sync: Merged into existing record.");
-                } else {
-                    const payload = {
-                        salesPerson: "Kunal Sahi",
-                        customerName: targetCustomer,
-                        location: targetCustomer,
-                        container20: c20.toString(),
-                        container40: c40.toString(),
-                        containerDbl20: "0",
-                        stuffingDate: formStuffingDate,
-                        priority: "High", 
-                        remarks: `${newRemarkFragment}`, 
-                        entryDate: targetEntryDate, 
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    await collectionRef.add(payload);
-                    console.log("Firebase Sync: Created new record.");
+
+                    if (matchingDoc) {
+                        const data = matchingDoc.data();
+                        const existing20 = parseInt(data.container20) || 0;
+                        const existing40 = parseInt(data.container40) || 0;
+                        const existingRemarks = data.remarks || "";
+                        const bookingAlreadyAdded = record.bookingNo && existingRemarks.toUpperCase().includes(record.bookingNo.toUpperCase());
+
+                        const newTotal20 = bookingAlreadyAdded ? existing20 : existing20 + planEntry.c20;
+                        const newTotal40 = bookingAlreadyAdded ? existing40 : existing40 + planEntry.c40;
+                        
+                        let newRemarks = existingRemarks;
+                        if (newRemarks) {
+                            if (!bookingAlreadyAdded) {
+                                newRemarks += `, ${newRemarkFragment}`;
+                            }
+                        } else {
+                            newRemarks = `${newRemarkFragment}`;
+                        }
+
+                        await matchingDoc.ref.update({
+                            container20: newTotal20.toString(),
+                            container40: newTotal40.toString(),
+                            remarks: newRemarks,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log("Firebase Sync: Merged into existing record.");
+                    } else {
+                        const payload = {
+                            salesPerson: "Kunal Sahi",
+                            customerName: targetCustomer,
+                            location: targetCustomer,
+                            container20: planEntry.c20.toString(),
+                            container40: planEntry.c40.toString(),
+                            containerDbl20: "0",
+                            stuffingDate: formStuffingDate,
+                            priority: "High", 
+                            remarks: `${newRemarkFragment}`, 
+                            entryDate: targetEntryDate, 
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        await collectionRef.add(payload);
+                        console.log("Firebase Sync: Created new record.");
+                    }
                 }
             } catch (e) {
                 console.error("Firebase Sync Error:", e);
@@ -1042,7 +1305,13 @@
         async function saveInvoiceData(formData) {
             const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             const todayISO = getTodayDate(); 
-            const finalStuffingDate = formData.stuffingDate ? formData.stuffingDate : "Not Confirm";
+            const stuffingDateEntries = normalizeStuffingPlanEntries(
+                formData.stuffingDateEntries,
+                formData.stuffingDate,
+                formData.otherReference
+            );
+            const firstStuffingDate = stuffingDateEntries.find(entry => entry.date)?.date || "";
+            const finalStuffingDate = firstStuffingDate || "Not Confirm";
             const savedAtISO = new Date().toISOString();
 
             let currentMailStatus = 'No';
@@ -1070,6 +1339,7 @@
                 packages: formData.packages,
                 cartonNos: formData.cartonNos,
                 stuffingDate: finalStuffingDate, 
+                stuffingDateEntries: stuffingDateEntries,
                 grossWeight: formData.grossWeight,
                 bookingParty: formData.bookingParty, 
                 mailStatus: currentMailStatus,
@@ -1103,7 +1373,7 @@
             let csvContent = headers.join(",") + "\n";
             
             records.forEach(record => {
-                const formattedStuffingDate = formatDate(record.stuffingDate || 'Not Confirm');
+                const formattedStuffingDate = formatRecordStuffingPlan(record);
                 const formattedEntryDate = formatDate(record.entryDate); 
                 
                 const row = [
@@ -1171,8 +1441,7 @@
                 row.insertCell().textContent = record.location;
                 row.insertCell().textContent = record.bookingNo;
                 
-                const sDate = record.stuffingDate || 'Not Confirm';
-                row.insertCell().textContent = formatDate(sDate);
+                row.insertCell().textContent = formatRecordStuffingPlan(record);
                 row.insertCell().textContent = record.containers;
                 row.insertCell().textContent = record.shippingLine;
                 row.insertCell().textContent = record.finalDestination;
@@ -1208,11 +1477,16 @@
             document.getElementById('grossWeight').value = record.grossWeight || '';
             document.getElementById('bookingParty').value = record.bookingParty || '';
             
+            clearStuffingSplitRows();
+            const savedStuffingEntries = getRecordStuffingPlanEntries(record);
             const savedStuffingDate = record.stuffingDate;
             if (savedStuffingDate === 'Not Confirm') {
                 document.getElementById('stuffingDate').value = '';
             } else {
                 document.getElementById('stuffingDate').value = savedStuffingDate || '';
+            }
+            if (savedStuffingEntries.length > 1) {
+                savedStuffingEntries.forEach(entry => addStuffingSplitRow(entry.date, entry.containers));
             }
             
             document.getElementById('finalDestination').value = record.finalDestination || '';
@@ -1233,19 +1507,18 @@
             populateDatalist(); 
             loadAllData(); 
             document.getElementById('bookingNo').addEventListener('input', applyShippingLineByBookingNo);
+            document.getElementById('addStuffingSplitBtn').addEventListener('click', () => {
+                const existingRows = getFormStuffingSplitRows();
+                const dateValue = document.getElementById('stuffingDate').value;
+                const containersValue = existingRows.length === 0 ? document.getElementById('otherReference').value : '';
+                addStuffingSplitRow(dateValue, containersValue);
+            });
             
             // AUTO-CALCULATE GROSS WEIGHT LOGIC
             document.getElementById('otherReference').addEventListener('input', function(e) {
-                let containerStr = e.target.value.toLowerCase();
-                let c20 = 0, c40 = 0;
-                const regex = /(\d+)\s*[xX*]\s*(20|40)/g;
-                let match;
-                while ((match = regex.exec(containerStr)) !== null) {
-                    const count = parseInt(match[1], 10);
-                    const size = match[2];
-                    if (size === '20') c20 += count;
-                    if (size === '40') c40 += count;
-                }
+                const counts = parseContainerCounts(e.target.value);
+                const c20 = counts.c20;
+                const c40 = counts.c40;
                 // If any valid container format is matched, update weight
                 if (c20 > 0 || c40 > 0) {
                     document.getElementById('grossWeight').value = (c20 * 3500) + (c40 * 7900);
@@ -1282,6 +1555,7 @@
             document.getElementById('bookingParty').value = ""; // Default Blank
             document.getElementById('buyer').value = "";
             document.getElementById('location').selectedIndex = 0;
+            clearStuffingSplitRows();
         }
 
         function handleInvoiceAction(actionType) {
@@ -1333,7 +1607,14 @@
                 return; 
             }
             
-            const sDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : "Not Confirm";
+            const stuffingPlanResult = buildStuffingPlanFromForm(formData);
+            if (!stuffingPlanResult.ok) {
+                alert(stuffingPlanResult.message);
+                return;
+            }
+
+            formData.stuffingDateEntries = stuffingPlanResult.entries;
+            const sDate = formatStuffingPlanEntries(formData.stuffingDateEntries);
             
             const confirmMsg = 
                 `Popup Notification\n` +
@@ -1362,7 +1643,7 @@
             document.getElementById('displayCartonNos').textContent = formData.cartonNos;
             document.getElementById('displayLocation').textContent = formData.location; 
             
-            const displaySDate = formData.stuffingDate ? formatDate(formData.stuffingDate) : 'Not Confirm';
+            const displaySDate = formatStuffingPlanEntries(formData.stuffingDateEntries);
             document.getElementById('displayStuffingDate').textContent = displaySDate;
             
             document.getElementById('displayGrossWeight').textContent = formData.grossWeight;
@@ -1403,7 +1684,7 @@
             let bodyContent = `Please find attached Booking\nand Packing List\n\n`;
 
             selectedRecords.forEach(record => {
-                const sDate = record.stuffingDate ? formatDate(record.stuffingDate) : "Not Confirm";
+                const sDate = formatRecordStuffingPlan(record);
                 bodyContent += `Location: ${record.location}\n`;
                 bodyContent += `---------------------------------------\n`;
                 bodyContent += `Booking No. : ${record.bookingNo}, \n`;
@@ -1429,7 +1710,7 @@
             let message = `*Dear HCPL Team*\n\nPlease arrange to Move below Bookings :-\n`;
 
             selectedRecords.forEach(record => {
-                const sDate = record.stuffingDate ? formatDate(record.stuffingDate) : "Not Confirm";
+                const sDate = formatRecordStuffingPlan(record);
                 message += `--------------------\n`;
                 message += `*Loading Location:* ${record.location}\n`;
                 message += `*Containers:* ${record.containers}\n`;
