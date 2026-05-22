@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -632,27 +631,40 @@
                 <!-- 12. Booking Party (NEW LIST BOX - Default Blank with fixed width type) -->
                 <div class="input-item">
                     <label for="bookingParty">Booking Party:</label>
-                    <input type="text" list="bookingParties" id="bookingParty" name="bookingParty" required placeholder="Select Booking Party">
+                    <input type="text" list="bookingParties" id="bookingParty" name="bookingParty" placeholder="Select Booking Party">
                     <datalist id="bookingParties">
-                        <option value="Target Store"></option>
+                        <option value="NISHU"></option>
+                        <option value="NIKHLESH"></option>
+                        <option value="APL Logistics"></option>
                     </datalist>
                 </div>
 
-                <!-- 13. Shipping Line (NOW AS A LIST BOX) -->
+                <!-- 13. Commodity -->
+                <div class="input-item">
+                    <label for="commodity">Commodity:</label>
+                    <input type="text" list="commodityList" id="commodity" name="commodity" required placeholder="Select Commodity">
+                    <datalist id="commodityList">
+                        <option value="Yarn"></option>
+                        <option value="Towel"></option>
+                        <option value="Garments"></option>
+                    </datalist>
+                </div>
+
+                <!-- 14. Shipping Line (NOW AS A LIST BOX) -->
                 <div class="input-item">
                     <label for="buyer">Shipping Line:</label>
                     <input type="text" list="shippingLines" id="buyer" name="buyer" required placeholder="Select Shipping Line" style="text-transform: uppercase;">
                     <datalist id="shippingLines"></datalist>
                 </div>
 
-                <!-- 14. Country of Final Destination -->
+                <!-- 15. Country of Final Destination -->
                 <div class="input-item">
                     <label for="finalDestination">Country of Final Destination:</label>
                     <input type="text" list="destinationPorts" id="finalDestination" name="finalDestination" required placeholder="Select or type port name">
                     <datalist id="destinationPorts"></datalist>
                 </div>
 
-                <!-- 15. Gross Weight (KGS) -->
+                <!-- 16. Gross Weight (KGS) -->
                 <div class="input-item">
                     <label for="grossWeight">Gross Weight (KGS):</label>
                     <input type="number" id="grossWeight" name="grossWeight" step="0.01" required>
@@ -729,6 +741,10 @@
                 <tr>
                     <th>Booking No.</th>
                     <td id="displayBookingNo"></td>
+                </tr>
+                <tr>
+                    <th>Commodity</th>
+                    <td id="displayCommodity"></td>
                 </tr>
             </table>
             
@@ -886,6 +902,14 @@
             "OMEGA", "ONE", "OOCL", "PAREKH", "RCL", "SEABRIDGE", "STAR/ZIM", 
             "TS LINE", "UNIFEEDER", "WINASIA", "WINWIN"
         ];
+
+        const LOCATION_DEFAULTS = {
+            "TRIDENT DHAULA": { bookingParty: "NISHU", commodity: "Yarn" },
+            "TRIDENT SANGHERA": { bookingParty: "NIKHLESH", commodity: "Towel" },
+            "TARGET STORE": { bookingParty: "APL Logistics", commodity: "Garments" },
+            "TRAEGET STORE": { bookingParty: "APL Logistics", commodity: "Garments" },
+            "TRIDENT LOTUS": { bookingParty: "", commodity: "Garments" }
+        };
 
         function formatDate(dateString) {
             if (!dateString) return '';
@@ -1138,6 +1162,24 @@
             }
         }
 
+        function applyLocationDefaults(force = true) {
+            const locationInput = document.getElementById('location');
+            const bookingPartyInput = document.getElementById('bookingParty');
+            const commodityInput = document.getElementById('commodity');
+            const normalizedLocation = (locationInput?.value || '').trim().toUpperCase();
+            const defaults = LOCATION_DEFAULTS[normalizedLocation];
+
+            if (!defaults) return;
+
+            if (bookingPartyInput && (force || !bookingPartyInput.value)) {
+                bookingPartyInput.value = defaults.bookingParty;
+            }
+
+            if (commodityInput && (force || !commodityInput.value)) {
+                commodityInput.value = defaults.commodity;
+            }
+        }
+
         function populateDatalist() {
             const datalist = document.getElementById('destinationPorts');
             datalist.innerHTML = ''; 
@@ -1155,6 +1197,26 @@
                     const option = document.createElement('option');
                     option.value = line;
                     lineDatalist.appendChild(option);
+                });
+            }
+
+            const bookingPartyDatalist = document.getElementById('bookingParties');
+            if (bookingPartyDatalist) {
+                bookingPartyDatalist.innerHTML = '';
+                ["NISHU", "NIKHLESH", "APL Logistics"].forEach(party => {
+                    const option = document.createElement('option');
+                    option.value = party;
+                    bookingPartyDatalist.appendChild(option);
+                });
+            }
+
+            const commodityDatalist = document.getElementById('commodityList');
+            if (commodityDatalist) {
+                commodityDatalist.innerHTML = '';
+                ["Yarn", "Towel", "Garments"].forEach(commodity => {
+                    const option = document.createElement('option');
+                    option.value = commodity;
+                    commodityDatalist.appendChild(option);
                 });
             }
         }
@@ -1193,7 +1255,7 @@
                             `⏱️<b>Stuffing Date:</b> ${sDate}\n` +
                             `-----------------------------------------\n` +
                             `🧾<b>Booking No.:</b> ${formData.bookingNo}\n` +
-                            `🏢<b>Booking Party:</b> ${formData.bookingParty || 'Target Store'}\n` +
+                            `🏢<b>Booking Party:</b> ${formData.bookingParty || ''}\n` +
                             `📦<b>Containers :</b> ${formData.otherReference}\n` +
                             `🚢<b>Line:</b> ${formData.buyer}\n` +
                             `🏷️<b>Country :</b> ${formData.finalDestination}\n` +
@@ -1342,6 +1404,7 @@
                 stuffingDateEntries: stuffingDateEntries,
                 grossWeight: formData.grossWeight,
                 bookingParty: formData.bookingParty, 
+                commodity: formData.commodity,
                 mailStatus: currentMailStatus,
                 entryDate: currentEntryDate 
             };
@@ -1476,6 +1539,7 @@
             document.getElementById('cartonNos').value = record.cartonNos || 'EXP983';
             document.getElementById('grossWeight').value = record.grossWeight || '';
             document.getElementById('bookingParty').value = record.bookingParty || '';
+            document.getElementById('commodity').value = record.commodity || '';
             
             clearStuffingSplitRows();
             const savedStuffingEntries = getRecordStuffingPlanEntries(record);
@@ -1491,6 +1555,7 @@
             
             document.getElementById('finalDestination').value = record.finalDestination || '';
             document.getElementById('location').value = record.location || '';
+            applyLocationDefaults(false);
             applyShippingLineByBookingNo();
             
             alert(`Data for Booking No. ${record.bookingNo} loaded into the form for editing/resending.`);
@@ -1507,6 +1572,7 @@
             populateDatalist(); 
             loadAllData(); 
             document.getElementById('bookingNo').addEventListener('input', applyShippingLineByBookingNo);
+            document.getElementById('location').addEventListener('change', () => applyLocationDefaults(true));
             document.getElementById('addStuffingSplitBtn').addEventListener('click', () => {
                 const existingRows = getFormStuffingSplitRows();
                 const dateValue = document.getElementById('stuffingDate').value;
@@ -1553,6 +1619,7 @@
             document.getElementById('cartonNos').value = "EXP983";
             document.getElementById('packages').value = 500;
             document.getElementById('bookingParty').value = ""; // Default Blank
+            document.getElementById('commodity').value = "";
             document.getElementById('buyer').value = "";
             document.getElementById('location').selectedIndex = 0;
             clearStuffingSplitRows();
@@ -1635,6 +1702,7 @@
             document.getElementById('displayOtherReference').textContent = formData.otherReference;
             document.getElementById('displayBuyer').textContent = formData.buyer;
             document.getElementById('displayBookingNo').textContent = formData.bookingNo;
+            document.getElementById('displayCommodity').textContent = formData.commodity;
             document.getElementById('displayInitialCarriage').textContent = formData.initialCarriage;
             document.getElementById('displayPortOfDischarge').textContent = formData.portOfDischarge;
             document.getElementById('displayCountryOfOrigin').textContent = formData.countryOfOrigin;
@@ -1688,7 +1756,7 @@
                 bodyContent += `Location: ${record.location}\n`;
                 bodyContent += `---------------------------------------\n`;
                 bodyContent += `Booking No. : ${record.bookingNo}, \n`;
-                bodyContent += `Booking Party: ${record.bookingParty || 'Target Store'}\n`;
+                bodyContent += `Booking Party: ${record.bookingParty || ''}\n`;
                 bodyContent += `Containers  : ${record.containers}\n`;
                 bodyContent += `Shipping Line:  ${record.shippingLine}.\n`;
                 bodyContent += `Country of Final Destination: :\n${record.finalDestination}.\n`; 
@@ -1715,7 +1783,7 @@
                 message += `*Loading Location:* ${record.location}\n`;
                 message += `*Containers:* ${record.containers}\n`;
                 message += `*Booking No:* ${record.bookingNo}\n`;
-                message += `*Booking Party:* ${record.bookingParty || 'Target Store'}\n`;
+                message += `*Booking Party:* ${record.bookingParty || ''}\n`;
                 message += `*Line:* ${record.shippingLine}\n`;
                 message += `*Final Destination:* ${record.finalDestination}\n`;
                 message += `------------------\n`;
