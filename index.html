@@ -625,6 +625,7 @@
                         <option value="TRIDENT SANGHERA">TRIDENT SANGHERA</option>
                         <option value="TARGET STORE">TARGET STORE</option>
                         <option value="TRIDENT LOTUS">TRIDENT LOTUS</option>
+                        <option value="JAWANDSONS , CHD ROAD">JAWANDSONS , CHD ROAD</option>
                     </select>
                 </div>
 
@@ -719,8 +720,10 @@
         <div class="section-title">Exporter Details</div>
         <div class="exporter-details">
             <p class="location-header" id="displayLocationHeader"></p>
-            <p>E-212, Kitchlu Nagar, Ludhiana - 141004 (P.B.), India</p>
-            <p>Phone: +91-123-4567890 | Email: info@tridentltd.com</p>
+            <div id="displayExporterAddress" style="display: contents;">
+                <p>E-212, Kitchlu Nagar, Ludhiana - 141004 (P.B.), India</p>
+                <p>Phone: +91-123-4567890 | Email: info@tridentltd.com</p>
+            </div>
         </div>
         
         <div class="info-box">
@@ -908,7 +911,8 @@
             "TRIDENT SANGHERA": { bookingParty: "NIKHLESH", commodity: "Towel" },
             "TARGET STORE": { bookingParty: "APL Logistics", commodity: "Garments" },
             "TRAEGET STORE": { bookingParty: "APL Logistics", commodity: "Garments" },
-            "TRIDENT LOTUS": { bookingParty: "", commodity: "Garments" }
+            "TRIDENT LOTUS": { bookingParty: "", commodity: "Garments" },
+            "JAWANDSONS , CHD ROAD": { bookingParty: "APL Logistics", commodity: "Garments" }
         };
 
         function formatDate(dateString) {
@@ -1698,6 +1702,21 @@
             saveInvoiceData(formData); 
             
             document.getElementById('displayLocationHeader').textContent = formData.location;
+            
+            const displayAddressContainer = document.getElementById('displayExporterAddress');
+            if (formData.location === 'JAWANDSONS , CHD ROAD' || formData.location === 'JAWANDSONS, CHD ROAD') {
+                displayAddressContainer.innerHTML = `
+                    <p>JAWANDSONS</p>
+                    <p>V&P.O BHAMIAN KALAN,TAJPUR ROAD</p>
+                    <p>LUDHIANA, 141009, PHONE:+911615088501, FAX:+911612500732</p>
+                `;
+            } else {
+                displayAddressContainer.innerHTML = `
+                    <p>E-212, Kitchlu Nagar, Ludhiana - 141004 (P.B.), India</p>
+                    <p>Phone: +91-123-4567890 | Email: info@tridentltd.com</p>
+                `;
+            }
+            
             document.getElementById('displayInvoiceNo').textContent = `${formData.invoiceNo} | ${formatDate(formData.invoiceDate)}`;
             document.getElementById('displayOtherReference').textContent = formData.otherReference;
             document.getElementById('displayBuyer').textContent = formData.buyer;
